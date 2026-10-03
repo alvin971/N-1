@@ -1,0 +1,88 @@
+"""Benchmark du diagnostic sur élèves simulés : exactitude vs nombre de questions.
+
+Compare :
+  * le diagnostic par gain d'information (src/tuteur/diagnostic) ;
+  * la « descente séquentielle » naïve (échec → on teste les prérequis, réussite → on s'arrête),
+    c'est-à-dire l'hypothèse initiale du projet, comme référence.
+"""
+
+from __future__ import annotations
+
+import random
+import statistics
+from dataclasses import dataclass
+
+from ..contenu import Contenu
+from ..diagnostic import Diagnostic, ParamsDiagnostic
+from .eleves import EleveSimule, frontiere_vraie, generer_eleve
+
+
+@dataclass
+class Mesures:
+    exactitude_kc: float  # part des KC correctement classées (maîtrisée / non maîtrisée)
+    rappel_frontiere: float  # part des vraies lacunes racines retrouvées
+    precision_frontiere: float
+    questions: float
+
+    def ligne(self, nom: str) -> str:
+        return (f"{nom:<28} exactitude KC {self.exactitude_kc:6.1%} | rappel frontière {self.rappel_frontiere:6.1%} "
+                f"| précision frontière {self.precision_frontiere:6.1%} | questions {self.questions:5.1f}")
+
+
+def _pr(vraie: set[str], trouvee: set[str]) -> tuple[float, float]:
+    rappel = len(vraie & trouvee) / len(vraie) if vraie else 1.0
+    precision = len(vraie & trouvee) / len(trouvee) if trouvee else (1.0 if not vraie else 0.0)
+    return rappel, precision
+
+
+def diagnostiquer(contenu: Contenu, eleve: EleveSimule, cibles: list[str], niveau: str, graine: int,
+                  params: ParamsDiagnostic = ParamsDiagnostic()) -> tuple[dict[str, bool], set[str], int]:
+    d = Diagnostic(contenu, cibles, niveau, params=params, graine=graine)
+    while (item := d.prochaine_question()) is not None:
+        d.enregistrer(item, item.corriger(eleve.repondre(item, contenu)))
+    r = d.resultat()
+    return {k: v >= 0.5 for k, v in r.marginales.items()}, set(r.frontiere), len(r.observations)
+
+
+def descente_sequentielle(contenu: Contenu, eleve: EleveSimule, cibles: list[str], graine: int) -> tuple[dict[str, bool], set[str], int]:
+    g = contenu.graphe
+    kcs = g.sous_graphe(cibles)
+    resultat: dict[str, bool] = {}
+    n = 0
+    pile = list(reversed(cibles))
+    while pile:
+        k = pile.pop()
+        if k in resultat:
+            continue
+        m = contenu.modeles_diagnostic(k)[0]
+        item = m.instancier(graine * 1000 + n, 2)
+        n += 1
+        ok = item.corriger(eleve.repondre(item, contenu)).juste
+        resultat[k] = ok
+        if not ok:
+            pile.extend(p for p in g.prereqs(k, True) if p not in resultat)
+    classes = {k: resultat.get(k, True) for k in kcs}
+    frontiere = {k for k, ok in resultat.items() if not ok and all(resultat.get(p, True) for p in g.prereqs(k, True))}
+    return classes, frontiere, n
+
+
+def evaluer(contenu: Contenu, chapitre: str = "equations_3e", niveau: str = "3e", n_eleves: int = 100,
+            graine: int = 1, params: ParamsDiagnostic = ParamsDiagnostic()) -> dict[str, Mesures]:
+    cibles = list(contenu.graphe.chapitres[chapitre].cibles)
+    kcs = contenu.graphe.sous_graphe(cibles)
+    rng = random.Random(graine)
+    res: dict[str, list[tuple[float, float, float, int]]] = {"gain d'information": [], "descente séquentielle": []}
+    for i in range(n_eleves):
+        eleve = generer_eleve(contenu, cibles, niveau, rng)
+        vraie = frontiere_vraie(contenu, eleve, kcs)
+        for nom, f in (("gain d'information", lambda e: diagnostiquer(contenu, e, cibles, niveau, i, params)),
+                       ("descente séquentielle", lambda e: descente_sequentielle(contenu, e, cibles, i))):
+            e = EleveSimule(set(eleve.maitrisees), eleve.p_slip, eleve.p_erreur_typique, rng=random.Random(i))
+            classes, frontiere, n = f(e)
+            exact = sum(classes[k] == eleve.sait(k) for k in kcs) / len(kcs)
+            rappel, precision = _pr(vraie, frontiere)
+            res[nom].append((exact, rappel, precision, n))
+    return {
+        nom: Mesures(*(statistics.mean(v[j] for v in vals) for j in range(4)))  # type: ignore[arg-type]
+        for nom, vals in res.items()
+    }

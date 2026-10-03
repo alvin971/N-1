@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tuteur"
+version = "0.1.0"
+description = "Tuteur mathématique adaptatif déterministe (MVP Nombres et calculs, 6e → 3e)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "sympy>=1.12",
+  "pyyaml>=6",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "hypothesis>=6"]
+
+[project.scripts]
+tuteur = "tuteur.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+tuteur = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

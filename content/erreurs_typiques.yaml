@@ -1,0 +1,240 @@
+# Erreurs typiques (« bugs ») — connaissance experte, pas apprentissage.
+#
+# Chaque erreur :
+#   - est EXÉCUTABLE : un modèle d'exercice (src/tuteur/exercises/modeles.py) ou le vérificateur
+#     d'étapes (src/tuteur/mathengine/steps.py) sait produire la réponse qu'elle engendre ;
+#   - pointe vers la KC où se situe réellement la lacune (`kc`), qui peut être PLUS BASSE que
+#     la KC de l'exercice : c'est ce qui permet de sauter directement à la racine ;
+#   - porte une remédiation pré-rédigée et relue (servie telle quelle, sans LLM).
+#
+# Règle CI : tout identifiant utilisé dans le code existe ici, et réciproquement.
+
+erreurs:
+  calc.retenue_oubliee:
+    kc: calc.addition_entiers
+    titre: Oubli de la retenue
+    remediation: >-
+      Quand la somme d'une colonne dépasse 9, on n'écrit que le chiffre des unités et on reporte
+      la dizaine (la retenue) dans la colonne suivante. Exemple : 47 + 38 → 7 + 8 = 15, on écrit 5
+      et on retient 1 ; puis 4 + 3 + 1 = 8. Résultat : 85.
+
+  calc.soustraction_petit_du_grand:
+    kc: calc.soustraction_entiers
+    titre: Soustraction du plus petit chiffre au plus grand dans chaque colonne
+    remediation: >-
+      Dans une soustraction posée, on calcule toujours « chiffre du haut − chiffre du bas ».
+      Si celui du haut est plus petit, on ajoute 10 en haut et 1 en bas dans la colonne suivante.
+      Exemple : 52 − 27 → 12 − 7 = 5, puis 5 − (2 + 1) = 2. Résultat : 25 (et non 35).
+
+  calc.table_voisine:
+    kc: calc.tables_multiplication
+    titre: Confusion avec un résultat voisin de la table
+    remediation: >-
+      Retrouve le produit à partir d'un résultat sûr : 7 × 8, c'est 7 × 7 + 7 = 49 + 7 = 56.
+      Vérifie ensuite avec l'ordre inverse : 8 × 7 = 56.
+
+  calc.multiplication_decalage_oublie:
+    kc: calc.multiplication_entiers
+    titre: Oubli du décalage (du zéro) pour le chiffre des dizaines
+    remediation: >-
+      Dans 23 × 14, le 1 de 14 vaut une dizaine : on calcule 23 × 4 = 92 puis 23 × 10 = 230
+      (d'où le zéro, ou le décalage d'un rang). Total : 92 + 230 = 322.
+
+  calc.division_reste_pour_quotient:
+    kc: calc.division_euclidienne
+    titre: Confusion entre quotient et reste
+    remediation: >-
+      Dans a = b × q + r, le quotient q est le nombre de fois où b « rentre » dans a ; le reste r
+      est ce qui reste (il est plus petit que b). Exemple : 47 = 5 × 9 + 2 → quotient 9, reste 2.
+
+  calc.priorites_gauche_a_droite:
+    kc: calc.priorites_operatoires
+    titre: Calcul de gauche à droite sans respecter les priorités
+    remediation: >-
+      Sans parenthèses, on effectue d'abord les multiplications, puis les additions et soustractions
+      de gauche à droite. 5 + 3 × 4 = 5 + 12 = 17 (et non 8 × 4 = 32).
+
+  frac.quotient_inverse:
+    kc: frac.quotient_entiers
+    titre: Numérateur et dénominateur inversés
+    remediation: >-
+      a ÷ b s'écrit a/b : le nombre que l'on divise (le dividende) va en haut, le diviseur en bas.
+      7 ÷ 3 = 7/3, car 3 × 7/3 = 7.
+
+  frac.quantite_oubli_numerateur:
+    kc: frac.fraction_d_une_quantite
+    titre: Division par le dénominateur sans multiplier par le numérateur
+    remediation: >-
+      3/4 de 20, c'est 3 fois le quart de 20 : 20 ÷ 4 = 5 (un quart), puis 5 × 3 = 15.
+      Diviser par 4 ne donne qu'UN quart.
+
+  frac.egalite_seul_denominateur:
+    kc: frac.egalite_fractions
+    titre: Seul le dénominateur est modifié
+    remediation: >-
+      Pour garder la même valeur, on multiplie le numérateur ET le dénominateur par le même nombre.
+      2/3 = (2 × 4)/(3 × 4) = 8/12. Écrire 2/12 change la valeur (2/12 est beaucoup plus petit).
+
+  frac.egalite_additive:
+    kc: frac.egalite_fractions
+    titre: Ajout du même nombre au numérateur et au dénominateur
+    remediation: >-
+      Ajouter le même nombre en haut et en bas change la valeur : 1/2 n'est pas égal à (1 + 4)/(2 + 4) = 5/6.
+      On MULTIPLIE en haut et en bas par le même nombre : 1/2 = 3/6.
+
+  frac.addition_num_et_den:
+    kc: frac.addition_meme_denominateur
+    titre: Addition des numérateurs ET des dénominateurs
+    remediation: >-
+      Le dénominateur indique la taille des parts, il ne s'additionne pas. 1/5 + 2/5 = 3/5 (trois
+      cinquièmes), et non 3/10. Pour des dénominateurs différents, on commence par les rendre égaux.
+
+  frac.addition_den_non_converti:
+    kc: frac.egalite_fractions
+    titre: Dénominateur commun choisi mais numérateurs non convertis
+    remediation: >-
+      Changer le dénominateur d'une fraction oblige à multiplier aussi son numérateur.
+      1/2 + 1/4 : 1/2 = 2/4, donc 2/4 + 1/4 = 3/4 (et non (1 + 1)/4).
+
+  frac.confusion_multiplication_division:
+    kc: frac.multiplication
+    titre: Confusion entre les règles de multiplication et de division
+    remediation: >-
+      Multiplication : on multiplie « tout droit » (numérateurs entre eux, dénominateurs entre eux).
+      Division : on multiplie par l'INVERSE de la seconde fraction. 2/3 ÷ 4/5 = 2/3 × 5/4 = 10/12 = 5/6.
+
+  frac.division_inverse_premiere:
+    kc: frac.division
+    titre: Inversion de la mauvaise fraction
+    remediation: >-
+      On inverse la fraction PAR laquelle on divise (la seconde), jamais la première.
+      a/b ÷ c/d = a/b × d/c.
+
+  rel.addition_signes:
+    kc: rel.addition
+    titre: Addition des distances à zéro quand les signes sont contraires
+    remediation: >-
+      Quand les signes sont contraires, on SOUSTRAIT les distances à zéro et on garde le signe de
+      celui qui est le plus loin de zéro : (−7) + 4 = −3 (on recule de 7 puis on avance de 4).
+
+  rel.moins_moins:
+    kc: rel.soustraction
+    titre: « Moins moins » non transformé en « plus »
+    remediation: >-
+      Soustraire un nombre, c'est ajouter son opposé : 5 − (−3) = 5 + 3 = 8.
+
+  rel.regle_signes:
+    kc: rel.multiplication
+    titre: Erreur dans la règle des signes
+    remediation: >-
+      Produit ou quotient : deux nombres de même signe donnent un résultat positif, deux nombres de
+      signes contraires donnent un résultat négatif. (−4) × (−3) = 12 ; (−12) ÷ 3 = −4.
+
+  lit.substitution_concatenation:
+    kc: lit.substitution
+    titre: « 3x » lu comme le nombre 3x écrit côte à côte
+    remediation: >-
+      3x signifie 3 × x. Pour x = 4, 3x = 3 × 4 = 12, et non 34.
+
+  lit.carre_double:
+    kc: lit.substitution
+    titre: x² confondu avec 2x
+    remediation: >-
+      x² = x × x, alors que 2x = x + x = 2 × x. Pour x = 5 : x² = 25 et 2x = 10.
+
+  lit.reduction_melange:
+    kc: lit.reduction
+    titre: Termes en x et termes constants additionnés ensemble
+    remediation: >-
+      On ne peut additionner que des termes de même nature : 3x + 2 ne se simplifie pas.
+      3x + 2 + 5x + 4 = (3x + 5x) + (2 + 4) = 8x + 6.
+
+  lit.distributivite_premier_terme_seulement:
+    kc: lit.simple_distributivite
+    titre: Seul le premier terme de la parenthèse est multiplié
+    remediation: >-
+      Le facteur devant la parenthèse multiplie CHAQUE terme : 3(x + 2) = 3 × x + 3 × 2 = 3x + 6
+      (et non 3x + 2).
+
+  lit.signe_moins_devant_parenthese:
+    kc: rel.soustraction
+    titre: Signe « − » devant une parenthèse appliqué au seul premier terme
+    remediation: >-
+      Un « − » devant une parenthèse change le signe de TOUS les termes qu'elle contient :
+      5 − (x − 1) = 5 − x + 1.
+
+  lit.double_distrib_premiers_derniers:
+    kc: lit.double_distributivite
+    titre: Seuls les premiers et les derniers termes sont multipliés
+    remediation: >-
+      Dans (a + b)(c + d), chaque terme du premier facteur multiplie chaque terme du second :
+      il y a 4 produits, ac + ad + bc + bd. (x + 2)(x + 3) = x² + 3x + 2x + 6 = x² + 5x + 6.
+
+  lit.carre_somme_sans_double_produit:
+    kc: lit.double_distributivite
+    titre: (x + a)² développé en x² + a²
+    remediation: >-
+      (x + a)² = (x + a)(x + a) : 4 produits, x² + ax + ax + a² = x² + 2ax + a².
+      Vérifie avec x = 1 et a = 1 : (1 + 1)² = 4, alors que 1² + 1² = 2.
+
+  lit.facteur_commun_oubli_du_1:
+    kc: lit.factorisation_facteur_commun
+    titre: Oubli du « 1 » quand le facteur commun est un terme entier
+    remediation: >-
+      5x + 5 = 5 × x + 5 × 1 = 5(x + 1). Il reste 1 dans la parenthèse, pas rien :
+      redévelopper 5(x + 1) permet de vérifier.
+
+  lit.difference_carres_confondue_carre:
+    kc: lit.difference_carres
+    titre: x² − a² factorisé en (x − a)²
+    remediation: >-
+      x² − a² = (x − a)(x + a). En redéveloppant (x − a)², on obtient x² − 2ax + a², qui n'est pas
+      la même expression.
+
+  eq.transposition_sans_changement_signe:
+    kc: eq.x_plus_a_egal_b
+    titre: Terme « passé de l'autre côté » sans changer de signe
+    remediation: >-
+      On ne « passe » rien : on fait la même opération sur les deux membres. x + 5 = 12 : on
+      soustrait 5 des deux côtés, x = 12 − 5 = 7. Vérifie : 7 + 5 = 12.
+
+  eq.soustrait_au_lieu_de_diviser:
+    kc: eq.ax_egal_b
+    titre: Coefficient soustrait au lieu de diviser
+    remediation: >-
+      Dans 3x = 12, x est MULTIPLIÉ par 3 ; l'opération inverse est la division :
+      x = 12 ÷ 3 = 4. Vérifie : 3 × 4 = 12.
+
+  eq.division_inversee:
+    kc: frac.quotient_entiers
+    titre: Division effectuée dans le mauvais sens
+    remediation: >-
+      Dans 4x = 3, on divise le membre de droite par le coefficient : x = 3/4 (et non 4/3).
+      Vérifie : 4 × 3/4 = 3.
+
+  eq.multiplie_au_lieu_de_diviser:
+    kc: eq.ax_egal_b
+    titre: Multiplication au lieu de la division
+    remediation: >-
+      Pour annuler « × 3 », on divise par 3 : 3x = 12 donne x = 12 ÷ 3 = 4.
+
+  eq.signe_du_coefficient:
+    kc: rel.division
+    titre: Signe du coefficient perdu lors de la division
+    remediation: >-
+      Dans −3x = 12, on divise par −3 (avec son signe) : x = 12 ÷ (−3) = −4.
+      Vérifie : −3 × (−4) = 12.
+
+  eq.coeff_fractionnaire_multiplie:
+    kc: frac.division
+    titre: Multiplication par la fraction au lieu de son inverse
+    remediation: >-
+      Dans (2/3)x = 4, on divise par 2/3, c'est-à-dire qu'on multiplie par 3/2 :
+      x = 4 × 3/2 = 6. Vérifie : 2/3 × 6 = 4.
+
+  eq.produit_nul_signes:
+    kc: eq.x_plus_a_egal_b
+    titre: Solutions d'un produit nul prises avec le mauvais signe
+    remediation: >-
+      (x + 3)(x − 2) = 0 ⇔ x + 3 = 0 ou x − 2 = 0 ⇔ x = −3 ou x = 2. Chaque facteur s'annule pour
+      l'OPPOSÉ du nombre qu'il contient : vérifie en remplaçant.
