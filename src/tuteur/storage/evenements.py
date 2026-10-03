@@ -48,7 +48,8 @@ class Evenement:
 
 class JournalEvenements:
     def __init__(self, chemin: str | Path = ":memory:"):
-        self.db = sqlite3.connect(str(chemin))
+        # check_same_thread=False : l'appelant (API) sérialise les accès par un verrou
+        self.db = sqlite3.connect(str(chemin), check_same_thread=False)
         self.db.executescript(SCHEMA)
 
     def ajouter(self, e: Evenement) -> int:

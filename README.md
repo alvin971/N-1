@@ -25,7 +25,8 @@ Aucun appel à un modèle de langage n'est nécessaire pour faire tourner le tut
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # ~190 tests
+tuteur serveur                           # interface élève → http://127.0.0.1:8000
+pytest                                   # ~210 tests
 tuteur valider-contenu                   # cohérence graphe / erreurs / cours / modèles
 tuteur session --chapitre equations_3e   # séance interactive (« ? » = indice)
 tuteur benchmark --eleves 100            # diagnostic vs descente séquentielle
@@ -35,6 +36,15 @@ tuteur graphe --chapitre equations_3e
 ```
 
 ## Ce qui est implémenté
+
+- **Interface élève web** (`tuteur serveur`) : inscription avec consentement parental sous
+  15 ans, choix du chapitre, test de départ, bilan expliqué, cours, exemples corrigés, exercices
+  avec **clavier mathématique MathLive** (servi localement, aucun CDN tiers), indices, retour
+  ciblé sur l'erreur typique, carte des compétences et parcours de rattrapage, export et
+  effacement des données. Fonctionne sur téléphone et ordinateur, thème clair/sombre.
+- **API HTTP** (FastAPI, doc interactive sur `/api/docs`) : jeton opaque par élève, cloisonnement,
+  en-têtes de sécurité (CSP stricte), la bonne réponse n'est jamais envoyée au navigateur,
+  progression reconstruite depuis le journal après redémarrage.
 
 - **Graphe** : 34 KC du CE1 à la 3e (chaîne des équations), arêtes typées forte/faible et
   justifiées, chapitres, validation (DAG, niveaux cohérents, références).
@@ -63,7 +73,8 @@ tuteur graphe --chapitre equations_3e
 
 1. Relecture du graphe et des erreurs typiques par 1 à 2 enseignants ; extension à ~200 KC
    (« Nombres et calculs » complet 6e → 3e).
-2. API HTTP + interface élève (clavier mathématique MathLive) ; persistance PostgreSQL.
+2. Compte récupérable (connexion par lien envoyé au parent) ; persistance PostgreSQL ;
+   tableau de bord parent / enseignant.
 3. Pilote réel (quelques centaines d'élèves) : calibration des paramètres BKT et des a priori,
    test avant/après indépendant.
 4. Choix et fine-tuning du modèle OCR (voir `docs/architecture.md` §OCR) ; LLM auto-hébergé UE

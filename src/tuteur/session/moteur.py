@@ -101,6 +101,7 @@ class Session:
     params_diagnostic: ParamsDiagnostic = field(default_factory=ParamsDiagnostic)
     horloge: Callable[[], datetime] = field(default=lambda: datetime.now(timezone.utc))
     tentatives_max_kc: int = 15
+    seuil_a_revoir: float = 0.7  # au-delà, une KC qui « résiste » est reportée en révision, pas escaladée
 
     def __post_init__(self) -> None:
         self.g = self.contenu.graphe
@@ -116,6 +117,7 @@ class Session:
         self.aide = False
         self.decisions: list[Decision] = []
         self.escalades: list[str] = []
+        self.a_revoir: list[str] = []
         self.resultat_diagnostic: ResultatDiagnostic | None = None
         self.revisions = self._revisions_dues()
         self.transferts: list[str] = []
@@ -184,7 +186,7 @@ class Session:
         if self.mode is Mode.DIAGNOSTIC:
             item = self.diagnostic.prochaine_question()
             if item is not None:
-                return self._poser(item, Mode.DIAGNOSTIC, "question la plus informative")
+                return self._poser(item, Mode.DIAGNOSTIC, "c'est la question qui m'en apprend le plus sur ce que tu sais déjà")
             self._terminer_diagnostic()
             return self.prochaine_action()
         if self.mode is Mode.REMEDIATION:
@@ -247,19 +249,25 @@ class Session:
         for k, p in r.marginales.items():
             self.profil.etat(k, p).p = p
         self.file = [k for k in r.parcours if not self._maitrisee(k)]
-        self._log("diagnostic_fin", {"marginales": r.marginales, "frontiere": r.frontiere, "parcours": self.file, "raison": r.raison_arret})
-        lignes = r.explication(self.contenu)
-        if r.frontiere:
-            titres = ", ".join(f"{self.g.kcs[k].titre} ({self.g.kcs[k].niveau})" for k in r.frontiere)
-            texte = f"Bilan du test : on commence par {titres}, puis on remontera vers le chapitre.\n" + "\n".join(lignes)
+        self._log("diagnostic_fin", {"marginales": r.marginales, "frontiere": r.frontiere, "parcours": self.file,
+                                     "raison": r.raison_arret, "explication": r.explication(self.contenu)})
+        racines = [k for k in r.frontiere if k not in self.cibles]
+        a_verifier = [k for k in self.file if k not in self.cibles and k not in racines]
+        if racines:
+            texte = ("Bilan du test : avant le chapitre, on va consolider quelques bases. C'est normal, et c'est "
+                     "ce qui débloquera la suite.\n" + "\n".join(r.explication_eleve(self.contenu)))
+        elif a_verifier:
+            texte = "Bilan du test : tes bases tiennent bien. On vérifie juste rapidement quelques notions, puis on attaque le chapitre."
         else:
-            texte = "Bilan du test : les prérequis semblent en place, on travaille directement le chapitre."
+            texte = "Bilan du test : tes bases sont solides, on attaque directement le chapitre."
+        if racines and a_verifier:
+            texte += "\nOn vérifiera aussi rapidement : " + ", ".join(f"{self.g.kcs[k].titre} ({self.g.kcs[k].niveau})" for k in a_verifier) + "."
         self.a_faire.append(Action(TypeAction.MESSAGE, texte, Mode.REMEDIATION, raison="résultat du diagnostic"))
         self.mode = Mode.REMEDIATION
 
     # ------------------------------------------------------------------ remédiation
     def _kc_courante(self) -> str | None:
-        while self.file and (self._maitrisee(self.file[0]) or self.file[0] in self.escalades):
+        while self.file and (self._maitrisee(self.file[0]) or self.file[0] in self.escalades or self.file[0] in self.a_revoir):
             self.file.pop(0)
         return self.file[0] if self.file else None
 
@@ -267,7 +275,7 @@ class Session:
         kc = self._kc_courante()
         if kc is None:
             self.mode = Mode.TRANSFERT
-            self.transferts = [c for c in self.cibles if c not in self.escalades]
+            self.transferts = [c for c in self.cibles if c not in self.escalades and c not in self.a_revoir]
             return self.prochaine_action()
         s = self.suivi.setdefault(kc, _SuiviKC())
         if not s.intro_faite:
@@ -319,15 +327,24 @@ class Session:
                 self.a_faire.append(Action(TypeAction.MESSAGE, "On consolide d'abord une notion plus ancienne.", self.mode))
                 return
         if s.tentatives >= self.tentatives_max_kc or (s.descente_faite and s.tentatives >= 12 and self._p(kc) < 0.4):
+            if self._p(kc) >= self.seuil_a_revoir:
+                # globalement réussie mais erreurs récurrentes : pas d'escalade, on y revient plus tard
+                self.a_revoir.append(kc)
+                self._log("a_revoir", {"kc": kc, "p": self._p(kc), "tentatives": s.tentatives})
+                self.a_faire.append(Action(TypeAction.MESSAGE, f"« {self.g.kcs[kc].titre} » est presque acquise : on avance, et on y reviendra lors d'une prochaine révision.", self.mode))
+                return
             self.escalades.append(kc)
             self._log("escalade", {"kc": kc, "p": self._p(kc), "tentatives": s.tentatives})
             self.a_faire.append(Action(TypeAction.MESSAGE, f"« {self.g.kcs[kc].titre} » résiste : je te conseille d'en parler à ton professeur. On continue avec la suite.", self.mode))
 
     def _fin(self) -> Action:
         maitrisees = [k for k in self.cibles if self._maitrisee(k)]
+        a_reprendre = [k for k in dict.fromkeys(self.a_revoir + [c for c in self.cibles if c not in maitrisees])
+                       if k not in self.escalades]
         texte = (f"Séance terminée. Compétences du chapitre maîtrisées : {len(maitrisees)}/{len(self.cibles)}."
+                 + (f" On reprendra la prochaine fois : {', '.join(self.g.kcs[k].titre for k in a_reprendre)}." if a_reprendre else "")
                  + (f" À voir avec ton professeur : {', '.join(self.g.kcs[k].titre for k in self.escalades)}." if self.escalades else ""))
-        self._log("session_fin", {"maitrisees": maitrisees, "escalades": self.escalades})
+        self._log("session_fin", {"maitrisees": maitrisees, "escalades": self.escalades, "a_revoir": self.a_revoir})
         return Action(TypeAction.FIN, texte, Mode.TERMINE)
 
 

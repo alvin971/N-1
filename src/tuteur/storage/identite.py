@@ -15,6 +15,8 @@ gérées dans un HSM/KMS hébergé dans l'UE.
 
 from __future__ import annotations
 
+import hashlib
+import secrets
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -28,6 +30,11 @@ CREATE TABLE IF NOT EXISTS identites (
     annee_naissance INTEGER NOT NULL,
     niveau_scolaire TEXT NOT NULL,
     contact_parent TEXT,
+    cree_le TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS jetons (
+    empreinte TEXT PRIMARY KEY,
+    eleve TEXT NOT NULL REFERENCES identites(eleve) ON DELETE CASCADE,
     cree_le TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS consentements (
@@ -59,7 +66,7 @@ class Identite:
 
 class CoffreIdentite:
     def __init__(self, chemin: str | Path = ":memory:"):
-        self.db = sqlite3.connect(str(chemin))
+        self.db = sqlite3.connect(str(chemin), check_same_thread=False)
         self.db.execute("PRAGMA foreign_keys = ON")
         self.db.executescript(SCHEMA)
 
@@ -105,6 +112,20 @@ class CoffreIdentite:
             "SELECT accorde FROM consentements WHERE eleve = ? AND finalite = ? ORDER BY rowid DESC LIMIT 1", (eleve, finalite)
         ).fetchone()
         return bool(row and row[0])
+
+    # -------------------------------------------------------------- jetons d'accès
+    def emettre_jeton(self, eleve: str) -> str:
+        """Jeton d'accès opaque ; seule son empreinte SHA-256 est stockée."""
+        jeton = secrets.token_urlsafe(32)
+        self.db.execute("INSERT INTO jetons VALUES (?, ?, ?)",
+                        (hashlib.sha256(jeton.encode()).hexdigest(), eleve, datetime.now(timezone.utc).isoformat()))
+        self.db.commit()
+        return jeton
+
+    def eleve_du_jeton(self, jeton: str) -> str | None:
+        row = self.db.execute("SELECT eleve FROM jetons WHERE empreinte = ?",
+                              (hashlib.sha256(jeton.encode()).hexdigest(),)).fetchone()
+        return row[0] if row else None
 
     def effacer(self, eleve: str) -> None:
         self.db.execute("DELETE FROM identites WHERE eleve = ?", (eleve,))

@@ -68,8 +68,25 @@ class ResultatDiagnostic:
     def maitrisee(self, kc: str, seuil: float = 0.5) -> bool:
         return self.marginales[kc] >= seuil
 
+    def explication_eleve(self, contenu: Contenu) -> list[str]:
+        """Version pour l'élève : concrète, sans probabilités ni identifiants."""
+        lignes = []
+        for kc in self.frontiere:
+            k = contenu.graphe.kcs[kc]
+            ratees = [o for o in self.observations if o.statut is not Statut.CORRECT
+                      and (o.kc == kc or (o.erreur_type and contenu.erreurs[o.erreur_type].kc == kc))]
+            erreurs = sorted({contenu.erreurs[o.erreur_type].titre.lower() for o in ratees if o.erreur_type})
+            if ratees:
+                detail = f"{len(ratees)} question{'s' if len(ratees) > 1 else ''} de ce type t'{'ont' if len(ratees) > 1 else 'a'} posé problème"
+            else:
+                detail = "c'est la base qui manque pour la suite"
+            if erreurs:
+                detail += f" (erreur repérée : {erreurs[0]})"
+            lignes.append(f"{k.titre} ({k.niveau}) : {detail}.")
+        return lignes
+
     def explication(self, contenu: Contenu) -> list[str]:
-        """Justification lisible (élève, parent, enseignant) des conclusions."""
+        """Justification détaillée (enseignant, parent, export) des conclusions."""
         lignes = []
         for kc in self.frontiere:
             preuves = [o for o in self.observations if o.kc == kc or (o.erreur_type and contenu.erreurs[o.erreur_type].kc == kc)]

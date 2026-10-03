@@ -153,3 +153,19 @@ Un LLM n'est pas nécessaire pour cela.
   d'inversion de verdict OCR, garde-fous LLM.
 - Global : gain d'apprentissage sur **tests indépendants** du système, rétention à 1 mois,
   comparaison contrôlée (remédiation par le graphe vs entraînement au niveau de la classe).
+
+## 13. API et interface élève (`api/`)
+
+- FastAPI, mono-processus au MVP : séances en mémoire derrière un verrou, progression
+  **reconstruite depuis le journal** au premier accès (redémarrage sans perte).
+- Deux fichiers SQLite distincts : `identite.sqlite3` (coffre) et `journal.sqlite3` (pseudonymes).
+- Authentification : jeton opaque (seule son empreinte SHA-256 est stockée). Aucune route ne
+  prend d'identifiant d'élève : un élève n'accède qu'à ses données. Limite actuelle : le jeton
+  ne vit que sur l'appareil ; une récupération de compte (lien envoyé au parent) est à faire.
+- La réponse attendue ne quitte jamais le serveur (liste fermée de champs, testée).
+- Saisie : clavier MathLive → LaTeX → `mathengine/latex.py` → notation scolaire → correcteur.
+  On n'utilise pas l'export « ascii-math » de MathLive (`\times` y devient « xx », lu x × x).
+- Aucune ressource tierce : MathLive (MIT) et ses polices sont servis localement ; CSP
+  `default-src 'self'`. Un CDN verrait l'adresse IP de chaque élève.
+- Test de bout en bout : `scripts/e2e_navigateur.py` fait jouer une séance complète dans
+  Chromium en tapant au clavier mathématique ; toute bonne réponse refusée est un échec.

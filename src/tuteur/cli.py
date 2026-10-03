@@ -6,6 +6,7 @@
     tuteur etapes "3x + 5 = 20" "3x = 20 + 5" "x = 25/3"
     tuteur session --chapitre equations_3e --niveau 3e          (interactif ; « ? » = indice)
     tuteur benchmark --eleves 100
+    tuteur serveur --port 8000                                 (interface élève dans le navigateur)
 """
 
 from __future__ import annotations
@@ -113,6 +114,16 @@ def cmd_benchmark(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serveur(a: argparse.Namespace) -> int:
+    import uvicorn
+
+    from .api import creer_app
+
+    print(f"Interface élève : http://{a.hote}:{a.port}/  ·  API : http://{a.hote}:{a.port}/api/docs")
+    uvicorn.run(creer_app(a.donnees), host=a.hote, port=a.port, log_level="warning")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="tuteur", description="Tuteur mathématique adaptatif (noyau déterministe)")
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -141,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--eleves", type=int, default=100)
     b.add_argument("--graine", type=int, default=1)
     b.set_defaults(f=cmd_benchmark)
+    w = sp.add_parser("serveur", help="API + interface élève")
+    w.add_argument("--donnees", default="donnees", help="dossier des bases SQLite (identité et journal séparés)")
+    w.add_argument("--hote", default="127.0.0.1")
+    w.add_argument("--port", type=int, default=8000)
+    w.set_defaults(f=cmd_serveur)
     a = p.parse_args(argv)
     try:
         return a.f(a)
