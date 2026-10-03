@@ -1,0 +1,69 @@
+name: Site de démonstration (GitHub Pages)
+
+# Construit la version « tout dans le navigateur » du tuteur (Python via Pyodide), la teste dans
+# un vrai navigateur, puis la publie sur GitHub Pages (uniquement depuis main).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dépendances
+        run: |
+          pip install -e ".[dev]" playwright
+          python -m playwright install --with-deps chromium
+      - name: Téléchargement de Pyodide
+        run: python scripts/telecharger_pyodide.py --dest build/pyodide
+      - name: Construction du site
+        run: python scripts/construire_site.py --pyodide build/pyodide --sortie site
+      - name: Test de bout en bout dans Chromium
+        run: |
+          python -m http.server 8080 --directory site > /dev/null 2>&1 &
+          sleep 2
+          python scripts/e2e_site_statique.py http://127.0.0.1:8080/ captures
+      - name: Captures d'écran du test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures-site
+          path: captures
+          if-no-files-found: ignore
+      - name: Configuration de GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+        continue-on-error: true
+      - name: Artefact Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publier:
+    if: github.event_name != 'pull_request'
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4

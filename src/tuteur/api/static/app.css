@@ -166,3 +166,11 @@ math-field { width: 100%; font-size: 1.4rem; padding: 8px 10px; border-radius: 1
   .enonce { font-size: 1.2rem; }
   h1 { font-size: 1.35rem; }
 }
+
+/* version navigateur (démo GitHub Pages) */
+.bandeau-demo { margin: 4px 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--accent-doux); color: var(--texte); font-size: .88rem; }
+.chargement { text-align: center; display: grid; justify-items: center; gap: 4px; }
+.roue { width: 36px; height: 36px; border-radius: 50%; border: 4px solid var(--accent-doux); border-top-color: var(--accent);
+  animation: tourner 0.9s linear infinite; margin-bottom: 8px; }
+@keyframes tourner { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .roue { animation-duration: 3s; } }

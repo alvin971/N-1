@@ -169,3 +169,17 @@ Un LLM n'est pas nécessaire pour cela.
   `default-src 'self'`. Un CDN verrait l'adresse IP de chaque élève.
 - Test de bout en bout : `scripts/e2e_navigateur.py` fait jouer une séance complète dans
   Chromium en tapant au clavier mathématique ; toute bonne réponse refusée est un échec.
+
+## 14. Démo GitHub Pages (tout dans le navigateur)
+
+- `tuteur.service.Service` porte toute la logique, sans dépendance web ; l'API FastAPI n'en est
+  qu'une couche HTTP. `Service.requete(méthode, chemin, corps, jeton)` reproduit le contrat HTTP.
+- `scripts/telecharger_pyodide.py` récupère Pyodide (npm) et les paquets nécessaires (numpy,
+  sympy, pyyaml, sqlite3) en vérifiant leurs empreintes ; `scripts/construire_site.py` assemble
+  le site (interface + Pyodide + `tuteur.zip`) ; `api/static/local.js` exécute le service dans la
+  page et conserve les bases SQLite dans IndexedDB.
+- Le workflow `pages.yml` construit et teste le site à chaque PR (`scripts/e2e_site_statique.py` :
+  séance complète au clavier mathématique, persistance après rechargement), et ne publie que
+  depuis `main`.
+- Compromis : la bonne réponse est forcément présente dans la page. Acceptable pour une démo,
+  pas pour une évaluation : la version serveur reste la référence.
