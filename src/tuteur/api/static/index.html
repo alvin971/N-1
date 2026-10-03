@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>N-1 · Tuteur de maths</title>
+  <meta name="description" content="Tuteur de mathématiques adaptatif : retrouve l'origine de tes difficultés et rattrape-les pas à pas.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script defer src="vendor/mathlive/mathlive.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="barre">
+    <a class="marque" href="#" id="lien-accueil" aria-label="Accueil">
+      <span class="logo" aria-hidden="true">n−1</span>
+      <span class="marque-texte">Tuteur de maths</span>
+    </a>
+    <details class="menu" id="menu" hidden>
+      <summary id="menu-prenom">Moi</summary>
+      <div class="menu-contenu">
+        <button type="button" class="lien" id="btn-export">Télécharger mes données</button>
+        <button type="button" class="lien danger" id="btn-effacer">Effacer mon compte</button>
+        <button type="button" class="lien" id="btn-deconnexion">Se déconnecter de cet appareil</button>
+      </div>
+    </details>
+  </header>
+
+  <main id="app" aria-live="polite">
+    <!-- inscription -->
+    <section class="vue" id="vue-inscription" hidden>
+      <div class="carte etroite">
+        <h1>Bienvenue&nbsp;!</h1>
+        <p class="sous-titre">Un petit test pour repérer d'où viennent tes difficultés, puis un parcours rien que pour toi.</p>
+        <form id="form-inscription" novalidate>
+          <label>Ton prénom <input name="prenom" maxlength="40" autocomplete="given-name" required></label>
+          <div class="ligne">
+            <label>Ta classe
+              <select name="niveau" required>
+                <option value="3e">3e</option><option value="4e">4e</option>
+                <option value="5e">5e</option><option value="6e">6e</option>
+              </select>
+            </label>
+            <label>Année de naissance <input name="annee_naissance" type="number" min="2005" max="2022" inputmode="numeric" required></label>
+          </div>
+          <fieldset class="parent" id="bloc-parent" hidden>
+            <legend>Pour un parent</legend>
+            <p class="petit">Avant 15 ans, l'accord d'un parent est nécessaire.</p>
+            <label>E-mail d'un parent <input name="contact_parent" type="email" maxlength="120" autocomplete="email"></label>
+            <label class="case"><input type="checkbox" name="accord_parent"> Je suis parent de cet élève et j'accepte l'utilisation du service.</label>
+          </fieldset>
+          <label class="case"><input type="checkbox" name="accord_service" required> J'accepte que mes réponses servent à adapter mes exercices.</label>
+          <details class="info">
+            <summary>Que deviennent mes données&nbsp;?</summary>
+            <ul>
+              <li>Ton prénom et le contact parent sont rangés à part ; tes réponses sont liées à un identifiant au hasard.</li>
+              <li>Tout est hébergé en Europe. Rien n'est vendu ni utilisé pour entraîner d'autres services.</li>
+              <li>Tu peux télécharger ou effacer tes données à tout moment depuis le menu.</li>
+            </ul>
+          </details>
+          <p class="erreur" id="erreur-inscription" role="alert" hidden></p>
+          <button class="principal" type="submit">C'est parti</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- chapitres -->
+    <section class="vue" id="vue-chapitres" hidden>
+      <h1 id="titre-chapitres">Choisis un chapitre</h1>
+      <p class="sous-titre">Chaque chapitre commence par un test court qui s'adapte à tes réponses.</p>
+      <div class="grille" id="liste-chapitres"></div>
+    </section>
+
+    <!-- séance -->
+    <section class="vue" id="vue-seance" hidden>
+      <div class="seance">
+        <div class="colonne-principale">
+          <div class="fil">
+            <span class="pastille" id="pastille-mode">Test de départ</span>
+            <span class="compteur" id="compteur"></span>
+          </div>
+          <article class="carte action" id="carte-action"></article>
+        </div>
+        <aside class="carte carte-competences" aria-label="Ta carte de compétences">
+          <details open id="details-carte">
+            <summary><h2>Ta carte</h2></summary>
+            <div id="parcours" class="parcours" hidden></div>
+            <ol class="liste-kc" id="liste-kc"></ol>
+            <div class="legende">
+              <span><i class="point maitrisee"></i>acquise</span>
+              <span><i class="point en_cours"></i>en cours</span>
+              <span><i class="point a_travailler"></i>à travailler</span>
+              <span><i class="point non_evaluee"></i>pas encore vue</span>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

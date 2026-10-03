@@ -1,0 +1,104 @@
+# Explications de cours par KC, pré-rédigées et relues par un enseignant.
+# Servies telles quelles (pas de LLM au moment de l'usage). L'exemple corrigé dynamique
+# vient de la `solution_redigee` du modèle d'exercice.
+
+cours:
+  calc.addition_entiers: >-
+    On aligne les chiffres par rang (unités sous unités, dizaines sous dizaines…) et on additionne
+    colonne par colonne en commençant par les unités. Si une colonne dépasse 9, on reporte la
+    retenue dans la colonne suivante.
+  calc.soustraction_entiers: >-
+    On aligne les chiffres par rang et on calcule « haut − bas » colonne par colonne. Si le chiffre
+    du haut est plus petit, on ajoute 10 en haut et 1 en bas dans la colonne suivante. On vérifie
+    en additionnant le résultat et le nombre retranché.
+  calc.tables_multiplication: >-
+    Les tables se retrouvent à partir de résultats sûrs : 7 × 8 = 7 × 7 + 7. L'ordre ne compte pas
+    (7 × 8 = 8 × 7), ce qui divise par deux le nombre de résultats à retenir.
+  calc.multiplication_entiers: >-
+    On décompose le second facteur : 23 × 14 = 23 × 4 + 23 × 10. Le chiffre des dizaines donne
+    un produit partiel décalé d'un rang (on ajoute un zéro).
+  calc.division_euclidienne: >-
+    Diviser a par b, c'est trouver q et r tels que a = b × q + r avec r < b. On cherche le plus
+    grand multiple de b qui ne dépasse pas a.
+  calc.multiples_diviseurs: >-
+    b est un diviseur de a (et a un multiple de b) si la division de a par b tombe juste (reste 0).
+    Critères utiles : divisible par 2 si le dernier chiffre est pair, par 5 s'il finit par 0 ou 5,
+    par 3 si la somme des chiffres est un multiple de 3.
+  calc.priorites_operatoires: >-
+    Sans parenthèses, on effectue d'abord les multiplications et divisions, puis les additions et
+    soustractions, de gauche à droite. Les parenthèses passent avant tout.
+  frac.quotient_entiers: >-
+    Le quotient de a par b est le nombre qui, multiplié par b, donne a. Il s'écrit a/b, même quand
+    la division ne tombe pas juste : 7 ÷ 3 = 7/3.
+  frac.fraction_d_une_quantite: >-
+    Prendre a/b d'une quantité, c'est la partager en b parts égales et en prendre a :
+    3/4 de 20 = (20 ÷ 4) × 3 = 15.
+  frac.egalite_fractions: >-
+    Une fraction ne change pas de valeur si on multiplie (ou divise) son numérateur ET son
+    dénominateur par le même nombre non nul : 2/3 = 8/12.
+  frac.simplification: >-
+    Simplifier, c'est diviser numérateur et dénominateur par un diviseur commun. La fraction est
+    irréductible quand le seul diviseur commun est 1.
+  frac.addition_meme_denominateur: >-
+    Pour additionner des fractions de même dénominateur, on additionne les numérateurs et on garde
+    le dénominateur : 2/7 + 3/7 = 5/7.
+  frac.addition_denominateurs_multiples: >-
+    Si un dénominateur est multiple de l'autre, on réécrit la fraction de plus petit dénominateur
+    avec le grand : 1/3 + 1/6 = 2/6 + 1/6 = 3/6 = 1/2.
+  frac.addition_quelconque: >-
+    On choisit un dénominateur commun (par exemple le produit des dénominateurs), on réécrit chaque
+    fraction avec ce dénominateur, puis on additionne les numérateurs et on simplifie.
+  frac.multiplication: >-
+    On multiplie les numérateurs entre eux et les dénominateurs entre eux, puis on simplifie :
+    2/3 × 5/7 = 10/21.
+  frac.division: >-
+    Diviser par une fraction, c'est multiplier par son inverse : a/b ÷ c/d = a/b × d/c.
+  rel.addition: >-
+    Même signe : on additionne les distances à zéro et on garde le signe. Signes contraires : on
+    soustrait les distances à zéro et on prend le signe du nombre le plus éloigné de zéro.
+  rel.soustraction: >-
+    Soustraire un nombre, c'est ajouter son opposé : a − b = a + (−b). Ainsi 3 − (−5) = 3 + 5 = 8.
+  rel.multiplication: >-
+    On multiplie les distances à zéro. Le produit est positif si les deux facteurs ont le même
+    signe, négatif sinon.
+  rel.division: >-
+    Même règle des signes que pour le produit : même signe → quotient positif, signes contraires →
+    quotient négatif.
+  lit.substitution: >-
+    On remplace la lettre par sa valeur en rétablissant les signes × cachés (3x = 3 × x), puis on
+    calcule en respectant les priorités.
+  lit.reduction: >-
+    Réduire, c'est regrouper les termes de même nature : les termes en x² ensemble, en x ensemble,
+    les nombres ensemble. 3x + 5x = 8x, mais 3x + 2 ne se réduit pas.
+  lit.simple_distributivite: >-
+    k(a + b) = k × a + k × b : le facteur multiplie chaque terme de la parenthèse, signes compris.
+  lit.double_distributivite: >-
+    (a + b)(c + d) = ac + ad + bc + bd : chaque terme du premier facteur multiplie chaque terme du
+    second, puis on réduit.
+  lit.factorisation_facteur_commun: >-
+    Factoriser, c'est transformer une somme en produit. On repère un facteur commun à tous les
+    termes : ka + kb = k(a + b). On vérifie en redéveloppant.
+  lit.difference_carres: >-
+    Pour tout a : x² − a² = (x − a)(x + a). On vérifie en développant le produit.
+  eq.tester_solution: >-
+    Un nombre est solution d'une équation si, en le substituant à x, les deux membres prennent la
+    même valeur. On calcule chaque membre séparément puis on compare.
+  eq.x_plus_a_egal_b: >-
+    On peut ajouter ou soustraire un même nombre aux deux membres d'une équation sans changer ses
+    solutions. x + a = b ⇔ x = b − a.
+  eq.ax_egal_b: >-
+    On peut diviser les deux membres par un même nombre non nul. ax = b ⇔ x = b/a (a ≠ 0).
+  eq.ax_plus_b_egal_c: >-
+    On isole d'abord le terme en x (on soustrait b des deux côtés), puis on divise par a.
+  eq.inconnue_deux_membres: >-
+    On regroupe les termes en x dans un membre et les nombres dans l'autre, en faisant la même
+    opération des deux côtés, puis on se ramène à ax = b.
+  eq.avec_parentheses: >-
+    On développe d'abord les parenthèses, on réduit chaque membre, puis on résout comme une
+    équation du premier degré.
+  eq.coefficients_fractionnaires: >-
+    Même méthode qu'avec un coefficient entier : pour isoler x dans (p/q)x = c, on multiplie les
+    deux membres par l'inverse q/p.
+  eq.produit_nul: >-
+    Un produit est nul si et seulement si l'un au moins de ses facteurs est nul. On résout chaque
+    facteur = 0 séparément ; l'équation a en général deux solutions.

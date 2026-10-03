@@ -1,0 +1,330 @@
+# Graphe de compétences (KC) — MVP « Nombres et calculs », chaîne des équations de 3e.
+#
+# Règles éditoriales (vérifiées en CI par `tuteur valider-contenu`) :
+#   - un `id` de KC ne change JAMAIS une fois publié (les événements y font référence) ;
+#   - le graphe des prérequis est un DAG (pas de cycle) ;
+#   - chaque arête porte une justification (`pourquoi`) relisible par un enseignant ;
+#   - chaque KC a au moins un modèle d'exercice qui l'isole (`diagnostic: true`) ;
+#   - `force: forte` = sans ce prérequis la KC est quasi impossible ; `faible` = elle est fragilisée.
+#
+# Niveaux : CP CE1 CE2 CM1 CM2 6e 5e 4e 3e (niveau d'introduction usuel ; à rattacher aux
+# attendus de fin d'année / repères annuels de progression publiés au BO en vigueur).
+
+version: "2026.10-mvp1"
+
+kcs:
+  # ------------------------------------------------------------------ calcul sur les entiers
+  - id: calc.addition_entiers
+    titre: Additionner des nombres entiers
+    niveau: CE1
+    domaine: nombres_calculs
+    maitrise: Calcule la somme de deux entiers (jusqu'à 4 chiffres) sans erreur de retenue.
+    prereqs: []
+
+  - id: calc.soustraction_entiers
+    titre: Soustraire des nombres entiers
+    niveau: CE1
+    domaine: nombres_calculs
+    maitrise: Calcule une différence d'entiers positifs, y compris avec retenue.
+    prereqs:
+      - {kc: calc.addition_entiers, force: forte, pourquoi: "La soustraction se contrôle par l'addition (complément)."}
+
+  - id: calc.tables_multiplication
+    titre: Connaître les tables de multiplication
+    niveau: CE2
+    domaine: nombres_calculs
+    maitrise: Restitue instantanément les produits des tables de 2 à 10.
+    prereqs:
+      - {kc: calc.addition_entiers, force: faible, pourquoi: "Les tables se construisent par additions itérées."}
+
+  - id: calc.multiplication_entiers
+    titre: Multiplier des nombres entiers
+    niveau: CM1
+    domaine: nombres_calculs
+    maitrise: Calcule le produit de deux entiers (posé ou mental).
+    prereqs:
+      - {kc: calc.tables_multiplication, force: forte, pourquoi: "Tout produit posé repose sur les tables."}
+      - {kc: calc.addition_entiers, force: forte, pourquoi: "La multiplication posée additionne des produits partiels."}
+
+  - id: calc.division_euclidienne
+    titre: Effectuer une division euclidienne
+    niveau: CM1
+    domaine: nombres_calculs
+    maitrise: Trouve le quotient et le reste de la division euclidienne d'un entier par un entier à un chiffre ou deux.
+    prereqs:
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Chercher le quotient = chercher le plus grand multiple inférieur."}
+      - {kc: calc.soustraction_entiers, force: forte, pourquoi: "Le reste s'obtient par soustraction."}
+
+  - id: calc.multiples_diviseurs
+    titre: Reconnaître multiples et diviseurs
+    niveau: 6e
+    domaine: nombres_calculs
+    maitrise: Détermine si un entier est multiple/diviseur d'un autre et trouve un diviseur commun.
+    prereqs:
+      - {kc: calc.division_euclidienne, force: forte, pourquoi: "a divise b ⇔ le reste de b par a est nul."}
+
+  - id: calc.priorites_operatoires
+    titre: Appliquer les priorités opératoires
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Calcule une expression sans parenthèses mêlant +, − et × dans le bon ordre.
+    prereqs:
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Les expressions contiennent des produits."}
+      - {kc: calc.addition_entiers, force: forte, pourquoi: "Les expressions contiennent des sommes."}
+
+  # ------------------------------------------------------------------ fractions
+  - id: frac.quotient_entiers
+    titre: Écrire un quotient d'entiers sous forme de fraction
+    niveau: 6e
+    domaine: nombres_calculs
+    maitrise: Sait que a ÷ b = a/b et écrit le résultat d'une division non exacte sous forme fractionnaire.
+    prereqs:
+      - {kc: calc.division_euclidienne, force: faible, pourquoi: "La fraction prolonge la division quand elle ne tombe pas juste."}
+
+  - id: frac.fraction_d_une_quantite
+    titre: Calculer une fraction d'une quantité
+    niveau: 6e
+    domaine: nombres_calculs
+    maitrise: Calcule a/b de N (diviser par b puis multiplier par a, ou l'inverse).
+    prereqs:
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Il faut multiplier par le numérateur."}
+      - {kc: calc.division_euclidienne, force: forte, pourquoi: "Il faut diviser par le dénominateur."}
+
+  - id: frac.egalite_fractions
+    titre: Écrire une fraction avec un dénominateur donné
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Multiplie numérateur ET dénominateur par le même nombre pour obtenir une fraction égale.
+    prereqs:
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "On multiplie numérateur et dénominateur."}
+      - {kc: calc.multiples_diviseurs, force: forte, pourquoi: "Il faut reconnaître que le nouveau dénominateur est un multiple."}
+
+  - id: frac.simplification
+    titre: Simplifier une fraction
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Rend une fraction irréductible en divisant par un diviseur commun.
+    prereqs:
+      - {kc: calc.multiples_diviseurs, force: forte, pourquoi: "Simplifier = diviser par un diviseur commun."}
+
+  - id: frac.addition_meme_denominateur
+    titre: Additionner des fractions de même dénominateur
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Additionne/soustrait les numérateurs et conserve le dénominateur commun.
+    prereqs:
+      - {kc: calc.addition_entiers, force: forte, pourquoi: "On additionne les numérateurs."}
+      - {kc: calc.soustraction_entiers, force: faible, pourquoi: "Cas des différences."}
+
+  - id: frac.addition_denominateurs_multiples
+    titre: Additionner des fractions dont un dénominateur est multiple de l'autre
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Réduit au même dénominateur (le plus grand) puis additionne.
+    prereqs:
+      - {kc: frac.egalite_fractions, force: forte, pourquoi: "Il faut d'abord réécrire une fraction avec le dénominateur commun."}
+      - {kc: frac.addition_meme_denominateur, force: forte, pourquoi: "Une fois réduites, on additionne comme à dénominateur égal."}
+
+  - id: frac.addition_quelconque
+    titre: Additionner des fractions quelconques
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Trouve un dénominateur commun quelconque et additionne/soustrait.
+    prereqs:
+      - {kc: frac.addition_denominateurs_multiples, force: forte, pourquoi: "Même méthode, avec un dénominateur commun à construire."}
+      - {kc: calc.multiples_diviseurs, force: faible, pourquoi: "Choisir un multiple commun."}
+
+  - id: frac.multiplication
+    titre: Multiplier des fractions
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Multiplie numérateurs entre eux et dénominateurs entre eux, puis simplifie.
+    prereqs:
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Produits des numérateurs et des dénominateurs."}
+      - {kc: frac.simplification, force: faible, pourquoi: "Le résultat est attendu irréductible."}
+
+  - id: frac.division
+    titre: Diviser par une fraction
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Multiplie par l'inverse du diviseur.
+    prereqs:
+      - {kc: frac.multiplication, force: forte, pourquoi: "Diviser = multiplier par l'inverse."}
+
+  # ------------------------------------------------------------------ nombres relatifs
+  - id: rel.addition
+    titre: Additionner des nombres relatifs
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Additionne deux relatifs de signes quelconques.
+    prereqs:
+      - {kc: calc.addition_entiers, force: forte, pourquoi: "Cas des signes identiques."}
+      - {kc: calc.soustraction_entiers, force: forte, pourquoi: "Cas des signes contraires (différence des distances à zéro)."}
+
+  - id: rel.soustraction
+    titre: Soustraire des nombres relatifs
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Transforme a − b en a + (opposé de b) et calcule.
+    prereqs:
+      - {kc: rel.addition, force: forte, pourquoi: "Soustraire = ajouter l'opposé."}
+
+  - id: rel.multiplication
+    titre: Multiplier des nombres relatifs
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Applique la règle des signes pour un produit.
+    prereqs:
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Produit des distances à zéro."}
+      - {kc: rel.addition, force: faible, pourquoi: "Familiarité avec les signes."}
+
+  - id: rel.division
+    titre: Diviser des nombres relatifs
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Applique la règle des signes pour un quotient.
+    prereqs:
+      - {kc: rel.multiplication, force: forte, pourquoi: "Même règle des signes."}
+      - {kc: calc.division_euclidienne, force: forte, pourquoi: "Quotient des distances à zéro."}
+
+  # ------------------------------------------------------------------ calcul littéral
+  - id: lit.substitution
+    titre: Calculer la valeur d'une expression littérale
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Remplace la lettre par une valeur et applique les priorités.
+    prereqs:
+      - {kc: calc.priorites_operatoires, force: forte, pourquoi: "3x + 2 pour x = 4 se calcule avec les priorités."}
+
+  - id: lit.reduction
+    titre: Réduire une expression littérale
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Regroupe les termes de même nature (en x, en x², constants).
+    prereqs:
+      - {kc: rel.addition, force: forte, pourquoi: "On additionne des coefficients relatifs."}
+
+  - id: lit.simple_distributivite
+    titre: Développer avec la simple distributivité
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Développe k(a + b) = ka + kb, y compris avec des signes.
+    prereqs:
+      - {kc: rel.multiplication, force: forte, pourquoi: "k multiplie chaque terme, signes compris."}
+      - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Produits des coefficients."}
+
+  - id: lit.double_distributivite
+    titre: Développer avec la double distributivité
+    niveau: 3e
+    domaine: nombres_calculs
+    maitrise: Développe et réduit (a + b)(c + d), y compris (x + a)².
+    prereqs:
+      - {kc: lit.simple_distributivite, force: forte, pourquoi: "La double distributivité applique deux fois la simple."}
+      - {kc: lit.reduction, force: forte, pourquoi: "Le résultat doit être réduit."}
+
+  - id: lit.factorisation_facteur_commun
+    titre: Factoriser avec un facteur commun
+    niveau: 3e
+    domaine: nombres_calculs
+    maitrise: Écrit ka + kb sous la forme k(a + b).
+    prereqs:
+      - {kc: lit.simple_distributivite, force: forte, pourquoi: "Factoriser = lire la distributivité à l'envers."}
+      - {kc: calc.multiples_diviseurs, force: faible, pourquoi: "Repérer un facteur commun numérique."}
+
+  - id: lit.difference_carres
+    titre: Factoriser une différence de deux carrés
+    niveau: 3e
+    domaine: nombres_calculs
+    maitrise: Écrit x² − a² sous la forme (x − a)(x + a).
+    prereqs:
+      - {kc: lit.double_distributivite, force: forte, pourquoi: "On contrôle la factorisation en redéveloppant."}
+
+  # ------------------------------------------------------------------ équations
+  - id: eq.tester_solution
+    titre: Tester si un nombre est solution d'une équation
+    niveau: 5e
+    domaine: nombres_calculs
+    maitrise: Calcule séparément les deux membres pour la valeur proposée et compare.
+    prereqs:
+      - {kc: lit.substitution, force: forte, pourquoi: "Tester une solution = substituer dans chaque membre."}
+
+  - id: eq.x_plus_a_egal_b
+    titre: Résoudre x + a = b
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Soustrait (ou ajoute) le même nombre aux deux membres.
+    prereqs:
+      - {kc: rel.soustraction, force: forte, pourquoi: "La solution est b − a avec des relatifs."}
+      - {kc: eq.tester_solution, force: faible, pourquoi: "Comprendre ce qu'est une solution."}
+
+  - id: eq.ax_egal_b
+    titre: Résoudre ax = b
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Divise les deux membres par a ; écrit la solution en fraction irréductible si besoin.
+    prereqs:
+      - {kc: rel.division, force: forte, pourquoi: "La solution est b ÷ a avec des relatifs."}
+      - {kc: frac.quotient_entiers, force: forte, pourquoi: "b ÷ a n'est pas toujours entier."}
+      - {kc: frac.simplification, force: faible, pourquoi: "Solution attendue sous forme irréductible."}
+
+  - id: eq.ax_plus_b_egal_c
+    titre: Résoudre ax + b = c
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Isole le terme en x puis divise par le coefficient.
+    prereqs:
+      - {kc: eq.x_plus_a_egal_b, force: forte, pourquoi: "Première étape : isoler ax."}
+      - {kc: eq.ax_egal_b, force: forte, pourquoi: "Seconde étape : diviser par a."}
+
+  - id: eq.inconnue_deux_membres
+    titre: Résoudre ax + b = cx + d
+    niveau: 4e
+    domaine: nombres_calculs
+    maitrise: Regroupe les termes en x dans un membre et les constantes dans l'autre.
+    prereqs:
+      - {kc: eq.ax_plus_b_egal_c, force: forte, pourquoi: "On se ramène à ax + b = c."}
+      - {kc: lit.reduction, force: forte, pourquoi: "Il faut réduire ax − cx."}
+
+  - id: eq.avec_parentheses
+    titre: Résoudre une équation avec parenthèses
+    niveau: 3e
+    domaine: nombres_calculs
+    maitrise: Développe puis se ramène à une équation du premier degré.
+    prereqs:
+      - {kc: eq.inconnue_deux_membres, force: forte, pourquoi: "Après développement, x est souvent dans les deux membres."}
+      - {kc: lit.simple_distributivite, force: forte, pourquoi: "Il faut développer a(x + b)."}
+
+  - id: eq.coefficients_fractionnaires
+    titre: Résoudre une équation à coefficient fractionnaire
+    niveau: 3e
+    domaine: nombres_calculs
+    maitrise: Résout (p/q)x + b = c en multipliant par l'inverse du coefficient.
+    prereqs:
+      - {kc: eq.ax_plus_b_egal_c, force: forte, pourquoi: "Même méthode qu'avec un coefficient entier."}
+      - {kc: frac.division, force: forte, pourquoi: "Diviser par p/q = multiplier par q/p."}
+
+  - id: eq.produit_nul
+    titre: Résoudre une équation produit nul
+    niveau: 3e
+    domaine: nombres_calculs
+    maitrise: Sait qu'un produit est nul si l'un de ses facteurs est nul et résout chaque facteur.
+    prereqs:
+      - {kc: eq.x_plus_a_egal_b, force: forte, pourquoi: "Chaque facteur x + a = 0 se résout ainsi."}
+      - {kc: eq.ax_egal_b, force: faible, pourquoi: "Facteurs de la forme ax + b."}
+      - {kc: lit.factorisation_facteur_commun, force: faible, pourquoi: "Souvent il faut d'abord factoriser."}
+
+chapitres:
+  - id: equations_3e
+    titre: Équations (3e)
+    niveau: 3e
+    cibles: [eq.avec_parentheses, eq.coefficients_fractionnaires, eq.produit_nul]
+
+  - id: calcul_litteral_3e
+    titre: Calcul littéral (3e)
+    niveau: 3e
+    cibles: [lit.double_distributivite, lit.factorisation_facteur_commun, lit.difference_carres]
+
+  - id: fractions_4e
+    titre: Opérations sur les fractions (4e)
+    niveau: 4e
+    cibles: [frac.addition_quelconque, frac.division]

@@ -1,0 +1,168 @@
+:root {
+  --fond: #f6f5f1;
+  --surface: #ffffff;
+  --surface-2: #f0eee8;
+  --texte: #1d1f24;
+  --texte-2: #5b5f69;
+  --bord: #e2dfd6;
+  --accent: #2f5bd3;
+  --accent-texte: #ffffff;
+  --accent-doux: #e6ecfb;
+  --ok: #1f7a4d;
+  --ok-doux: #e3f3ea;
+  --ko: #b3361f;
+  --ko-doux: #fbe9e5;
+  --attention: #8a5a00;
+  --attention-doux: #fdf1d8;
+  --neutre-doux: #eceae4;
+  --ombre: 0 1px 2px rgba(20, 20, 30, .06), 0 4px 16px rgba(20, 20, 30, .05);
+  --rayon: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #14161b; --surface: #1d2027; --surface-2: #252932; --texte: #eceef2; --texte-2: #a3a8b4;
+    --bord: #313643; --accent: #7d9bff; --accent-texte: #0e1220; --accent-doux: #222c4a;
+    --ok: #5cc98f; --ok-doux: #17322a; --ko: #ff8a73; --ko-doux: #3a1f1a; --attention: #f0c060; --attention-doux: #3a3020;
+    --neutre-doux: #2a2e37; --ombre: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --fond: #14161b; --surface: #1d2027; --surface-2: #252932; --texte: #eceef2; --texte-2: #a3a8b4;
+  --bord: #313643; --accent: #7d9bff; --accent-texte: #0e1220; --accent-doux: #222c4a;
+  --ok: #5cc98f; --ok-doux: #17322a; --ko: #ff8a73; --ko-doux: #3a1f1a; --attention: #f0c060; --attention-doux: #3a3020;
+  --neutre-doux: #2a2e37; --ombre: none; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--fond); color: var(--texte);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 .25rem; letter-spacing: -.01em; }
+h2 { font-size: 1.05rem; margin: 0; }
+p { margin: 0 0 .75rem; }
+button, input, select { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+/* barre */
+.barre { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; max-width: 1100px; margin: 0 auto; }
+.marque { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-weight: 600; }
+.logo { display: inline-grid; place-items: center; min-width: 40px; height: 32px; padding: 0 8px; border-radius: 9px;
+  background: var(--accent); color: var(--accent-texte); font-weight: 700; letter-spacing: -.02em; }
+.menu { position: relative; }
+.menu summary { list-style: none; cursor: pointer; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--bord); background: var(--surface); }
+.menu summary::-webkit-details-marker { display: none; }
+.menu-contenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; min-width: 250px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--bord); border-radius: 12px; box-shadow: var(--ombre); display: grid; }
+
+main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 48px; }
+.vue > h1 { margin-top: 12px; }
+.sous-titre { color: var(--texte-2); margin-bottom: 20px; }
+.petit { font-size: .9rem; color: var(--texte-2); }
+
+.carte { background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); box-shadow: var(--ombre); padding: 20px; }
+.etroite { max-width: 520px; margin: 24px auto; }
+
+/* formulaires */
+form { display: grid; gap: 14px; }
+label { display: grid; gap: 6px; font-weight: 500; }
+input:not([type=checkbox]), select {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--bord); background: var(--surface);
+}
+input:focus-visible, select:focus-visible, button:focus-visible, math-field:focus-within { outline: 3px solid var(--accent-doux); outline-offset: 1px; border-color: var(--accent); }
+.ligne { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.case { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; }
+.case input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+fieldset.parent { border: 1px solid var(--bord); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; margin: 0; }
+legend { font-weight: 600; padding: 0 6px; }
+.info summary { cursor: pointer; color: var(--accent); }
+.info ul { margin: 8px 0 0; padding-left: 20px; color: var(--texte-2); font-size: .92rem; }
+.erreur { color: var(--ko); background: var(--ko-doux); padding: 10px 12px; border-radius: 10px; margin: 0; }
+
+button { cursor: pointer; border-radius: 10px; border: 1px solid var(--bord); background: var(--surface); padding: 10px 16px; }
+button.principal { background: var(--accent); color: var(--accent-texte); border-color: transparent; font-weight: 600; padding: 12px 18px; }
+button.principal:disabled { opacity: .55; cursor: default; }
+button.lien { border: none; background: none; text-align: left; padding: 8px 10px; border-radius: 8px; color: var(--texte); }
+button.lien:hover { background: var(--surface-2); }
+button.lien.danger { color: var(--ko); }
+.discret { border: none; background: none; color: var(--accent); padding: 8px 4px; }
+
+/* chapitres */
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.chapitre { display: grid; gap: 12px; align-content: start; }
+.chapitre .meta { color: var(--texte-2); font-size: .92rem; margin: 0; }
+.jauge { height: 8px; border-radius: 999px; background: var(--neutre-doux); overflow: hidden; }
+.jauge > span { display: block; height: 100%; background: var(--ok); border-radius: inherit; }
+
+/* séance */
+.seance { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; margin-top: 12px; }
+.fil { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+.pastille { font-size: .82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-doux); color: var(--accent); }
+.pastille.remediation { background: var(--attention-doux); color: var(--attention); }
+.pastille.transfert, .pastille.revision { background: var(--ok-doux); color: var(--ok); }
+.compteur { color: var(--texte-2); font-size: .9rem; }
+
+.action { display: grid; gap: 16px; min-height: 260px; align-content: start; }
+.etiquette { font-size: .85rem; color: var(--texte-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.niveau { font-weight: 600; font-size: .78rem; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--texte-2); }
+.enonce { font-size: 1.35rem; line-height: 1.4; font-weight: 500; margin: 0; }
+.saisie { display: grid; gap: 10px; }
+math-field { width: 100%; font-size: 1.4rem; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--bord);
+  background: var(--surface); color: var(--texte); --caret-color: var(--accent); --selection-background-color: var(--accent-doux); }
+.saisie input.texte { font-size: 1.2rem; padding: 12px 14px; }
+.aide-saisie { font-size: .85rem; color: var(--texte-2); margin: 0; }
+.choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.choix button { font-size: 1.15rem; padding: 14px; }
+.choix button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-doux); }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.retour { border-radius: 12px; padding: 12px 14px; border: 1px solid transparent; }
+.retour.ok { background: var(--ok-doux); color: var(--ok); }
+.retour.ko { background: var(--ko-doux); color: var(--ko); }
+.retour.forme, .retour.illisible { background: var(--attention-doux); color: var(--attention); }
+.retour.neutre { background: var(--surface-2); color: var(--texte-2); }
+.retour p { margin: 0; color: var(--texte); }
+.retour strong { display: block; margin-bottom: 2px; }
+.indice { background: var(--accent-doux); border-radius: 12px; padding: 10px 14px; margin: 0; }
+.bloc-texte { white-space: pre-wrap; margin: 0; }
+.etapes { margin: 0; padding: 14px 16px; background: var(--surface-2); border-radius: 12px; display: grid; gap: 6px;
+  font-variant-numeric: tabular-nums; list-style: none; }
+.etapes li { font-size: 1.1rem; }
+.bilan { display: grid; gap: 10px; }
+.bilan ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.raison { font-size: .85rem; color: var(--texte-2); margin: 0; }
+
+/* carte des compétences */
+.carte-competences { padding: 16px; position: sticky; top: 12px; }
+.carte-competences summary { list-style: none; cursor: default; margin-bottom: 10px; }
+.carte-competences summary::-webkit-details-marker { display: none; }
+.parcours { background: var(--attention-doux); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
+.parcours strong { color: var(--attention); }
+.parcours ol { margin: 6px 0 0; padding-left: 18px; }
+.liste-kc { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 60vh; overflow: auto; }
+.liste-kc li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; padding: 5px 6px; border-radius: 8px; font-size: .88rem; }
+.liste-kc li.courante { background: var(--accent-doux); font-weight: 600; }
+.liste-kc li.cible { font-weight: 600; }
+.liste-kc .niveau { font-size: .72rem; }
+.point { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--neutre-doux); border: 1px solid var(--bord); }
+.point.maitrisee, .point.consolidee, .point.transferee, .point.presumee { background: var(--ok); border-color: var(--ok); }
+.point.presumee { opacity: .5; }
+.point.en_cours { background: var(--attention); border-color: var(--attention); }
+.point.a_travailler { background: var(--ko); border-color: var(--ko); }
+.legende { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: .8rem; color: var(--texte-2); }
+.legende span { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 860px) {
+  .seance { grid-template-columns: 1fr; }
+  .carte-competences { position: static; }
+  .carte-competences summary { cursor: pointer; }
+  .carte-competences summary h2::after { content: " ▾"; color: var(--texte-2); }
+}
+@media (max-width: 480px) {
+  .ligne { grid-template-columns: 1fr; }
+  .carte { padding: 16px; }
+  .enonce { font-size: 1.2rem; }
+  h1 { font-size: 1.35rem; }
+}
