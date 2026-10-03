@@ -72,8 +72,16 @@ class EleveSimule:
             self.maitrisees.add(kc)
 
 
+PROFILS = {
+    # profil : (nombre de lacunes racines, P(KC du niveau de l'élève non acquise))
+    "fort": ((0, 0), 0.15),
+    "moyen": ((0, 1), 0.45),
+    "fragile": ((1, 3), 0.75),
+}
+
+
 def generer_eleve(contenu: Contenu, cibles: list[str], niveau_eleve: str, rng: random.Random,
-                  n_lacunes: tuple[int, int] = (0, 2)) -> EleveSimule:
+                  n_lacunes: tuple[int, int] = (0, 2), p_niveau: float = 0.6) -> EleveSimule:
     """Vérité terrain : 0 à 2 lacunes racines tirées dans le sous-graphe ; tous leurs descendants
     sont non maîtrisés ; les KC du niveau de l'élève sont non maîtrisées avec probabilité 0,6
     (chapitre pas encore travaillé) ; bruit : 3 % de KC « oubliées » isolées."""
@@ -86,7 +94,7 @@ def generer_eleve(contenu: Contenu, cibles: list[str], niveau_eleve: str, rng: r
         non_m.add(l)
         non_m |= g.descendants(l, sous)
     for k in kcs:
-        if rang_niveau(g.kcs[k].niveau) >= rang_niveau(niveau_eleve) and rng.random() < 0.6:
+        if rang_niveau(g.kcs[k].niveau) >= rang_niveau(niveau_eleve) and rng.random() < p_niveau:
             non_m.add(k)
             non_m |= g.descendants(k, sous)
         elif rng.random() < 0.03:

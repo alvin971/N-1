@@ -186,7 +186,7 @@ class Session:
         if self.mode is Mode.DIAGNOSTIC:
             item = self.diagnostic.prochaine_question()
             if item is not None:
-                return self._poser(item, Mode.DIAGNOSTIC, "c'est la question qui m'en apprend le plus sur ce que tu sais déjà")
+                return self._poser(item, Mode.DIAGNOSTIC, self._raison_diagnostic(item))
             self._terminer_diagnostic()
             return self.prochaine_action()
         if self.mode is Mode.REMEDIATION:
@@ -197,6 +197,14 @@ class Session:
                 return self._poser(self._nouvel_item(kc, 2), Mode.TRANSFERT, f"vérification au niveau du chapitre : {self.g.kcs[kc].titre}")
             self.mode = Mode.TERMINE
         return self._fin()
+
+    def _raison_diagnostic(self, item: Item) -> str:
+        if not self.diagnostic.observations:
+            return ("on commence par un exercice complet du chapitre : s'il est réussi, il valide d'un coup "
+                    "toutes les notions qu'il contient")
+        if item.kcs[0] in self.cibles:
+            return "exercice du chapitre, pour vérifier ce que tu sais déjà faire"
+        return "un exercice précédent n'a pas marché : on vérifie une des notions qu'il utilisait"
 
     def _poser(self, item: Item, mode: Mode, raison: str) -> Action:
         self.item_courant, self.mode_item, self.aide = item, mode, False

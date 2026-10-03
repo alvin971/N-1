@@ -133,6 +133,7 @@ kcs:
     prereqs:
       - {kc: frac.addition_denominateurs_multiples, force: forte, pourquoi: "Même méthode, avec un dénominateur commun à construire."}
       - {kc: calc.multiples_diviseurs, force: faible, pourquoi: "Choisir un multiple commun."}
+      - {kc: rel.addition, force: faible, pourquoi: "Une différence de fractions peut être négative."}
 
   - id: frac.multiplication
     titre: Multiplier des fractions
@@ -142,6 +143,7 @@ kcs:
     prereqs:
       - {kc: calc.multiplication_entiers, force: forte, pourquoi: "Produits des numérateurs et des dénominateurs."}
       - {kc: frac.simplification, force: faible, pourquoi: "Le résultat est attendu irréductible."}
+      - {kc: rel.multiplication, force: faible, pourquoi: "En 4e, les fractions peuvent être négatives : règle des signes."}
 
   - id: frac.division
     titre: Diviser par une fraction
@@ -302,6 +304,7 @@ kcs:
     prereqs:
       - {kc: eq.ax_plus_b_egal_c, force: forte, pourquoi: "Même méthode qu'avec un coefficient entier."}
       - {kc: frac.division, force: forte, pourquoi: "Diviser par p/q = multiplier par q/p."}
+      - {kc: frac.addition_quelconque, force: faible, pourquoi: "Regrouper kx et (p/q)x demande de calculer k − p/q."}
 
   - id: eq.produit_nul
     titre: Résoudre une équation produit nul

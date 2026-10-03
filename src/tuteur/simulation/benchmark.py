@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from ..contenu import Contenu
 from ..diagnostic import Diagnostic, ParamsDiagnostic
-from .eleves import EleveSimule, frontiere_vraie, generer_eleve
+from .eleves import PROFILS, EleveSimule, frontiere_vraie, generer_eleve
 
 
 @dataclass
@@ -25,7 +25,7 @@ class Mesures:
     questions: float
 
     def ligne(self, nom: str) -> str:
-        return (f"{nom:<28} exactitude KC {self.exactitude_kc:6.1%} | rappel frontière {self.rappel_frontiere:6.1%} "
+        return (f"{nom:<32} exactitude KC {self.exactitude_kc:6.1%} | rappel frontière {self.rappel_frontiere:6.1%} "
                 f"| précision frontière {self.precision_frontiere:6.1%} | questions {self.questions:5.1f}")
 
 
@@ -67,18 +67,30 @@ def descente_sequentielle(contenu: Contenu, eleve: EleveSimule, cibles: list[str
 
 
 def evaluer(contenu: Contenu, chapitre: str = "equations_3e", niveau: str = "3e", n_eleves: int = 100,
-            graine: int = 1, params: ParamsDiagnostic = ParamsDiagnostic()) -> dict[str, Mesures]:
+            graine: int = 1, params: ParamsDiagnostic = ParamsDiagnostic(), profil: str | None = None) -> dict[str, Mesures]:
+    """`profil` : « fort », « moyen », « fragile » (voir simulation.eleves.PROFILS), ou None pour le
+    tirage historique (lacunes 0-2, KC du niveau non acquises avec probabilité 0,6)."""
     cibles = list(contenu.graphe.chapitres[chapitre].cibles)
     kcs = contenu.graphe.sous_graphe(cibles)
     rng = random.Random(graine)
-    res: dict[str, list[tuple[float, float, float, int]]] = {"gain d'information": [], "descente séquentielle": []}
+    from dataclasses import replace
+
+    strategies = {
+        "descendante (présent d'abord)": lambda e, i: diagnostiquer(contenu, e, cibles, niveau, i, replace(params, strategie="descendante")),
+        "exhaustive (tout le graphe)": lambda e, i: diagnostiquer(contenu, e, cibles, niveau, i, replace(params, strategie="exhaustive")),
+        "descente séquentielle naïve": lambda e, i: descente_sequentielle(contenu, e, cibles, i),
+    }
+    res: dict[str, list[tuple[float, float, float, int]]] = {nom: [] for nom in strategies}
     for i in range(n_eleves):
-        eleve = generer_eleve(contenu, cibles, niveau, rng)
+        if profil is None:
+            eleve = generer_eleve(contenu, cibles, niveau, rng)
+        else:
+            lacunes, p_niveau = PROFILS[profil]
+            eleve = generer_eleve(contenu, cibles, niveau, rng, n_lacunes=lacunes, p_niveau=p_niveau)
         vraie = frontiere_vraie(contenu, eleve, kcs)
-        for nom, f in (("gain d'information", lambda e: diagnostiquer(contenu, e, cibles, niveau, i, params)),
-                       ("descente séquentielle", lambda e: descente_sequentielle(contenu, e, cibles, i))):
+        for nom, f in strategies.items():
             e = EleveSimule(set(eleve.maitrisees), eleve.p_slip, eleve.p_erreur_typique, rng=random.Random(i))
-            classes, frontiere, n = f(e)
+            classes, frontiere, n = f(e, i)
             exact = sum(classes[k] == eleve.sait(k) for k in kcs) / len(kcs)
             rappel, precision = _pr(vraie, frontiere)
             res[nom].append((exact, rappel, precision, n))

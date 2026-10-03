@@ -174,3 +174,8 @@ math-field { width: 100%; font-size: 1.4rem; padding: 8px 10px; border-radius: 1
   animation: tourner 0.9s linear infinite; margin-bottom: 8px; }
 @keyframes tourner { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .roue { animation-duration: 3s; } }
+
+/* niveau de difficulté de la question (1 à 3) */
+.difficulte { display: inline-flex; gap: 3px; margin-left: 2px; }
+.difficulte i { width: 7px; height: 7px; border-radius: 50%; background: var(--neutre-doux); border: 1px solid var(--bord); }
+.difficulte i.plein { background: var(--accent); border-color: var(--accent); }

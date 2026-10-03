@@ -197,7 +197,9 @@ function rendreQuestion(a) {
   const q = a.question;
   const retour = el("div", { class: "retour", hidden: true, role: "status" });
   const zoneIndice = el("p", { class: "indice", hidden: true });
-  const etiquette = el("div", { class: "etiquette" }, q.competence, el("span", { class: "niveau" }, q.niveau));
+  const etiquette = el("div", { class: "etiquette" }, q.competence, el("span", { class: "niveau" }, q.niveau),
+    el("span", { class: "difficulte", title: `Difficulté ${q.difficulte} sur 3`, "aria-label": `Difficulté ${q.difficulte} sur 3` },
+      [1, 2, 3].map((n) => el("i", { class: n <= q.difficulte ? "plein" : "" }))));
   const enonce = el("p", { class: "enonce" }, q.enonce);
   let zone;
 

@@ -38,6 +38,30 @@ Reproduire : `tuteur benchmark --eleves 100 [--chapitre …] [--niveau …]` (gr
 pédagogique. La prochaine mesure sérieuse est un pilote réel comparant le diagnostic court à un
 test long exhaustif sur un échantillon d'élèves.
 
+## Stratégie « descendante » (on part du présent) — par profil d'élève
+
+Reproduire : `tuteur benchmark --eleves 60` (profils fort / moyen / fragile, chapitre équations 3e,
+31 KC). Profils : fort = aucune lacune racine, 15 % de notions de 3e non acquises ; moyen = 0–1
+lacune, 45 % ; fragile = 1–3 lacunes, 75 % ; plus 3 % de notions oubliées isolément partout.
+
+| Profil | Stratégie | Exactitude KC | Lacunes racines retrouvées | Précision | Questions |
+|---|---|---|---|---|---|
+| fort | **descendante** | **94,8 %** | 82,4 % | **85,3 %** | **11,1** |
+| fort | exhaustive | 93,9 % | 83,5 % | 72,4 % | 13,7 |
+| fort | descente naïve | 93,2 % | 67,8 % | 65,8 % | 7,1 |
+| moyen | **descendante** | 95,1 % | 78,3 % | **91,8 %** | **13,5** |
+| moyen | exhaustive | 95,2 % | 86,1 % | 89,1 % | 15,0 |
+| moyen | descente naïve | 88,9 % | 55,2 % | 72,5 % | 10,7 |
+| fragile | **descendante** | 96,2 % | 80,7 % | **94,9 %** | **15,8** |
+| fragile | exhaustive | 96,3 % | 84,1 % | 93,0 % | 16,2 |
+| fragile | descente naïve | 83,9 % | 59,0 % | 81,0 % | 14,7 |
+
+Lecture : la stratégie descendante pose moins de questions et se trompe moins quand elle désigne une
+lacune (précision), au prix d'un rappel un peu plus faible chez les élèves moyens (elle ne va pas
+chercher une notion ancienne qu'aucun exercice raté ne met en cause). Un élève qui maîtrise tout est
+diagnostiqué en 3 à 4 questions, sans jamais revenir au primaire. Les « forts » restent à ~11
+questions en moyenne car le simulateur leur attribue environ une notion oubliée isolément.
+
 ## Cohérence du contenu (CI)
 
 Pour chaque modèle × difficulté × 25 graines : bonne réponse acceptée (valeur et forme), chaque

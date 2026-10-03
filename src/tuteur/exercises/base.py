@@ -13,7 +13,7 @@ Principes :
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 import sympy
@@ -72,10 +72,19 @@ class Modele:
     qcm_possible: bool = True
     temps_estime_s: int = 40
     erreurs: tuple[str, ...] = ()  # erreurs typiques que ce modèle sait produire
+    # Compétences MOBILISÉES selon la difficulté : un exercice de haut niveau contient toutes ses
+    # parties techniques (ex. résoudre 2(x − 3) = ½x + 4 mobilise distributivité, relatifs,
+    # fractions, réduction…). Une réussite valide donc toutes ces acquisitions à la fois.
+    mobilise: dict[int, tuple[str, ...]] = field(default_factory=dict)
 
     @property
     def kc_principale(self) -> str:
         return self.kcs[0]
+
+    def kcs_mobilisees(self, difficulte: int) -> tuple[str, ...]:
+        """Q-matrix effective à cette difficulté : KC principale d'abord, puis toutes les parties."""
+        extra = tuple(k for k in self.mobilise.get(difficulte, ()) if k not in self.kcs)
+        return self.kcs + extra
 
     def instancier(self, graine: int, difficulte: int = 1, qcm: bool = False, essais_max: int = 200) -> Item:
         if difficulte not in self.difficultes:
@@ -88,7 +97,8 @@ class Modele:
             choix: tuple[str, ...] = ()
             if qcm and self.qcm_possible and b.spec.type != "booleen":
                 choix = construire_qcm(b.spec, rng)
-            return Item(self.id, self.version, graine, difficulte, self.kcs, b.enonce, b.spec, b.solution_redigee, choix)
+            return Item(self.id, self.version, graine, difficulte, self.kcs_mobilisees(difficulte), b.enonce, b.spec,
+                        b.solution_redigee, choix)
         raise RuntimeError(f"{self.id} : aucun exercice diagnostique trouvé en {essais_max} essais")
 
 
@@ -166,11 +176,13 @@ REGISTRE: dict[str, Modele] = {}
 
 
 def modele(id: str, kcs: list[str], *, version: int = 1, diagnostic: bool = True, erreurs: tuple[str, ...] = (),
-           difficultes: tuple[int, ...] = (1, 2, 3), qcm_possible: bool = True, temps_estime_s: int = 40):
+           difficultes: tuple[int, ...] = (1, 2, 3), qcm_possible: bool = True, temps_estime_s: int = 40,
+           mobilise: dict[int, tuple[str, ...]] | None = None):
     def deco(f: Callable[[random.Random, int], Brouillon]) -> Callable[[random.Random, int], Brouillon]:
         if id in REGISTRE:
             raise ValueError(f"modèle en double : {id}")
-        REGISTRE[id] = Modele(id, version, tuple(kcs), diagnostic, f, difficultes, qcm_possible, temps_estime_s, erreurs)
+        REGISTRE[id] = Modele(id, version, tuple(kcs), diagnostic, f, difficultes, qcm_possible, temps_estime_s, erreurs,
+                              dict(mobilise or {}))
         return f
 
     return deco

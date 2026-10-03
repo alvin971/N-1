@@ -48,7 +48,7 @@ def test_parcours_respecte_les_prerequis(contenu):
 
 def test_meilleur_que_la_descente_sequentielle(contenu):
     res = evaluer(contenu, n_eleves=25, graine=3)
-    ig, desc = res["gain d'information"], res["descente séquentielle"]
+    ig, desc = res["descendante (présent d'abord)"], res["descente séquentielle naïve"]
     assert ig.exactitude_kc > desc.exactitude_kc
     assert ig.rappel_frontiere > desc.rappel_frontiere
 
@@ -59,3 +59,57 @@ def test_explication_lisible(contenu):
     non = {"rel.soustraction"} | contenu.graphe.descendants("rel.soustraction", set(kcs))
     r = _derouler(contenu, EleveSimule({k for k in kcs if k not in non}, rng=random.Random(1)), cibles)
     assert any("Soustraire des nombres relatifs" in l for l in r.explication(contenu))
+
+
+# ---------------------------------------------------------------------- stratégie descendante
+# « Les maths fonctionnent par acquis » : on teste le présent avec un exercice large, une réussite
+# valide toutes ses parties, on ne descend que dans les parties d'un exercice raté.
+
+
+def _trace(contenu, eleve, cibles, graine=0):
+    d = Diagnostic(contenu, cibles, "3e", graine=graine)
+    items = []
+    while (item := d.prochaine_question()) is not None:
+        items.append(item)
+        d.enregistrer(item, item.corriger(eleve.repondre(item, contenu)))
+    return d, items
+
+
+def test_eleve_fort_quelques_questions_au_niveau_du_present(contenu):
+    from tuteur.graph import rang_niveau
+
+    cibles = list(contenu.graphe.chapitres["equations_3e"].cibles)
+    eleve = EleveSimule(set(contenu.graphe.sous_graphe(cibles)), p_slip=0.0, rng=random.Random(0))
+    d, items = _trace(contenu, eleve, cibles)
+    assert len(items) <= 5
+    premier = items[0]
+    assert premier.kcs[0] in cibles and premier.difficulte == 3 and len(premier.kcs) >= 10  # épreuve large
+    # jamais de question de primaire ou de 6e à un élève qui réussit le présent
+    assert all(rang_niveau(contenu.graphe.kcs[i.kcs[0]].niveau) >= rang_niveau("4e") for i in items)
+    assert d.resultat().frontiere == []
+
+
+def test_on_ne_descend_que_dans_les_parties_d_un_exercice_rate(contenu):
+    g = contenu.graphe
+    cibles = list(g.chapitres["equations_3e"].cibles)
+    kcs = set(g.sous_graphe(cibles))
+    non = {"frac.multiplication"} | g.descendants("frac.multiplication", kcs)
+    eleve = EleveSimule(kcs - non, p_slip=0.0, rng=random.Random(1))
+    d, items = _trace(contenu, eleve, cibles, graine=1)
+    assert "frac.multiplication" in d.resultat().frontiere
+    rates = set()
+    for it in items:
+        if it.kcs[0] not in cibles:
+            # toute question sous le niveau du chapitre porte sur une partie d'un exercice déjà raté
+            # (ou sur un prérequis d'une telle partie)
+            assert it.kcs[0] in rates or any(it.kcs[0] in g.prereqs(r) for r in rates), it.kcs[0]
+        if not it.corriger(eleve.repondre(it, contenu)).juste:
+            rates |= set(it.kcs)
+
+
+def test_strategie_exhaustive_toujours_disponible(contenu):
+    from tuteur.diagnostic import ParamsDiagnostic
+
+    cibles = ["eq.ax_plus_b_egal_c"]
+    d = Diagnostic(contenu, cibles, "3e", params=ParamsDiagnostic(strategie="exhaustive"))
+    assert d.eligibles() == set(d.kcs)
