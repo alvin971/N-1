@@ -38,6 +38,13 @@ function el(tag, attrs = {}, ...enfants) {
 }
 
 async function api(chemin, { methode = "GET", corps } = {}) {
+  if (window.tuteurLocal) {
+    // version navigateur : le moteur Python tourne dans la page (Pyodide), aucun appel réseau
+    const r = await window.tuteurLocal.requete(methode, chemin, corps, jeton);
+    if (r.statut === 401) { oublierJeton(); vueInscription(); throw new Error("session expirée"); }
+    if (r.statut >= 400) throw new Error(r.donnees?.erreur || `erreur ${r.statut}`);
+    return r.donnees;
+  }
   const r = await fetch(chemin, {
     method: methode,
     headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) },
@@ -267,8 +274,10 @@ async function majCarte(a) {
 
 function brancherMenu() {
   $("#btn-export").onclick = async () => {
-    const r = await fetch("/api/moi/export", { headers: { Authorization: `Bearer ${jeton}` } });
-    const url = URL.createObjectURL(await r.blob());
+    const blob = window.tuteurLocal
+      ? new Blob([JSON.stringify(await api("/api/moi/export"), null, 2)], { type: "application/json" })
+      : await (await fetch("/api/moi/export", { headers: { Authorization: `Bearer ${jeton}` } })).blob();
+    const url = URL.createObjectURL(blob);
     el("a", { href: url, download: "mes-donnees.json" }).click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -300,6 +309,16 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   brancherMenu();
   if (window.matchMedia("(max-width: 860px)").matches) $("#details-carte").open = false;
+  if (window.tuteurLocal) {
+    $("#bandeau-demo").hidden = false;
+    afficher("vue-chargement");
+    try { await window.tuteurLocal.pret; } catch (e) {
+      const cause = String(e.message || e).trim().split("\n").filter(Boolean).pop();
+      console.error(e);
+      $("#chargement-etape").textContent = `Le chargement a échoué (${cause}). Recharge la page pour réessayer.`;
+      return;
+    }
+  }
   if (!jeton) return vueInscription();
   try { await demarrer(); } catch { vueInscription(); }
 });

@@ -21,6 +21,16 @@ Philosophie : **déterministe partout où c'est possible**.
 
 Aucun appel à un modèle de langage n'est nécessaire pour faire tourner le tuteur.
 
+## Démo en ligne
+
+**https://alvin971.github.io/N-1/** — le tuteur complet, exécuté **dans le navigateur** (le moteur
+Python tourne via Pyodide, servi par le site lui-même) : aucun serveur, aucune donnée envoyée,
+la progression reste sur l'appareil. Publiée automatiquement depuis `main` par
+`.github/workflows/pages.yml`, après un test de bout en bout dans Chromium.
+
+Limite propre à cette version : tout le moteur étant dans la page, un élève curieux peut lire les
+réponses avec les outils de développement. La version serveur (`tuteur serveur`) n'a pas ce défaut.
+
 ## Démarrage
 
 ```bash

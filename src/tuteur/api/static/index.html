@@ -27,6 +27,18 @@
   </header>
 
   <main id="app" aria-live="polite">
+    <p class="bandeau-demo" id="bandeau-demo" hidden>Démo : le tuteur fonctionne entièrement dans ton navigateur. Tes réponses restent sur cet appareil.</p>
+
+    <!-- chargement (version navigateur) -->
+    <section class="vue" id="vue-chargement" hidden>
+      <div class="carte etroite chargement">
+        <div class="roue" aria-hidden="true"></div>
+        <h1>Préparation du tuteur…</h1>
+        <p class="sous-titre" id="chargement-etape">Chargement du moteur de calcul.</p>
+        <p class="petit">La première visite télécharge environ 25 Mo, puis tout est gardé en cache.</p>
+      </div>
+    </section>
+
     <!-- inscription -->
     <section class="vue" id="vue-inscription" hidden>
       <div class="carte etroite">
