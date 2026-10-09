@@ -41,3 +41,20 @@ def test_requete_json(contenu):
     s = Service.creer(None, contenu)
     r = json.loads(s.requete_json("POST", "/api/eleves", json.dumps(INSCRIPTION)))
     assert r["statut"] == 201 and r["donnees"]["jeton"]
+
+
+def test_reinitialiser_garde_le_compte_et_efface_la_progression(contenu):
+    s = Service.creer(None, contenu)
+    j = s.requete("POST", "/api/eleves", INSCRIPTION)[1]["jeton"]
+    sid = s.requete("POST", "/api/seances", {"chapitre": "fractions_4e"}, j)[1]["seance"]
+    s.requete("GET", f"/api/seances/{sid}/action", jeton=j)
+    s.requete("POST", f"/api/seances/{sid}/reponse", {"saisie": "999"}, j)
+    eleve = s.eleve_du_jeton(j)
+    assert list(s.journal.lire(eleve))
+    statut, r = s.requete("POST", "/api/moi/reinitialiser", jeton=j)
+    assert statut == 200 and r["reinitialise"] and r["evenements_supprimes"] > 0
+    assert list(s.journal.lire(eleve)) == []
+    assert s.requete("GET", f"/api/seances/{sid}/action", jeton=j)[0] == 404  # séance en cours supprimée
+    assert s.requete("GET", "/api/moi", jeton=j)[1]["prenom"] == "Léa"  # compte conservé
+    prog = s.requete("GET", "/api/chapitres/fractions_4e/progression", jeton=j)[1]
+    assert all(k["statut"] == "non_evaluee" for k in prog["kcs"])

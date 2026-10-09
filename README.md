@@ -66,7 +66,9 @@ tuteur graphe --chapitre equations_3e
   **contrainte de pouvoir diagnostique** (une erreur typique ne doit jamais donner la bonne
   réponse), QCM dont les distracteurs sont produits par les erreurs typiques, exemples corrigés.
 - **33 erreurs typiques** exécutables, chacune rattachée à la KC où se trouve la lacune réelle.
-- **Diagnostic adaptatif** : environ 13 questions pour situer un élève de 3e sur 27 KC ;
+- **Diagnostic « par acquis »** : on part du présent avec un exercice complet du chapitre (une
+  réussite valide toutes les notions qu'il mobilise) et on ne descend que dans les parties d'un
+  exercice raté. Élève solide : 3 à 4 questions ; voir `docs/benchmarks.md`. Ancienne mesure :
   ≈ 97 % des KC bien classées et ≈ 84 % des lacunes racines retrouvées sur élèves simulés
   (vs 89,5 % et 60 % pour la descente séquentielle). Voir `docs/benchmarks.md`.
 - **Session** : révision espacée → diagnostic → remédiation (descente dynamique sur erreur

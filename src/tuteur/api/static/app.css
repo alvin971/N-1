@@ -174,3 +174,32 @@ math-field { width: 100%; font-size: 1.4rem; padding: 8px 10px; border-radius: 1
   animation: tourner 0.9s linear infinite; margin-bottom: 8px; }
 @keyframes tourner { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .roue { animation-duration: 3s; } }
+
+/* niveau de difficulté de la question (1 à 3) */
+.difficulte { display: inline-flex; gap: 3px; margin-left: 2px; }
+.difficulte i { width: 7px; height: 7px; border-radius: 50%; background: var(--neutre-doux); border: 1px solid var(--bord); }
+.difficulte i.plein { background: var(--accent); border-color: var(--accent); }
+
+/* bouton « Recommencer à zéro » */
+.barre-actions { display: flex; align-items: center; gap: 8px; }
+.recommencer { border-radius: 999px; padding: 6px 12px; font-size: .9rem; background: var(--surface); white-space: nowrap; }
+.recommencer:hover { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 480px) {
+  .recommencer { font-size: .85rem; padding: 6px 10px; }
+  .recommencer .long, .marque-texte { display: none; }
+}
+
+/* résolution rédigée « comme sur la copie » */
+.copie { display: grid; gap: 8px; }
+.copie-depart { margin: 0; font-size: 1.1rem; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 10px 10px 0; }
+.copie-lignes { margin: 0; padding-left: 28px; display: grid; gap: 8px; }
+.copie-lignes li::marker { color: var(--texte-2); font-size: .85rem; }
+.copie .discret { justify-self: start; }
+.etapes-retour { border: 1px solid var(--bord); border-radius: 12px; padding: 10px 14px; }
+.etapes-retour ol { margin: 4px 0 0; padding-left: 4px; list-style: none; display: grid; gap: 4px; }
+.etapes-retour li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.etapes-retour li.ok .marque-ligne { color: var(--ok); }
+.etapes-retour li.erreur .marque-ligne, .etapes-retour li.illisible .marque-ligne { color: var(--ko); font-weight: 700; }
+.etapes-retour li.erreur .texte-ligne { text-decoration: underline wavy var(--ko); text-underline-offset: 3px; }
+.erreur-ligne { color: var(--ko); font-size: .9rem; }
+.etapes-retour li.suite { color: var(--texte-2); }

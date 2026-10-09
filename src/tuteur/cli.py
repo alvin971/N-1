@@ -106,11 +106,14 @@ def cmd_session(a: argparse.Namespace) -> int:
 def cmd_benchmark(a: argparse.Namespace) -> int:
     from .simulation.benchmark import evaluer
 
-    debut = datetime.now(timezone.utc)
-    res = evaluer(_contenu(), a.chapitre, a.niveau, a.eleves, a.graine)
-    print(f"{a.eleves} élèves simulés, chapitre {a.chapitre} ({(datetime.now(timezone.utc) - debut).total_seconds():.0f} s)")
-    for nom, m in res.items():
-        print(m.ligne(nom))
+    contenu = _contenu()
+    for profil in (["fort", "moyen", "fragile"] if a.profil == "tous" else [None if a.profil == "historique" else a.profil]):
+        debut = datetime.now(timezone.utc)
+        res = evaluer(contenu, a.chapitre, a.niveau, a.eleves, a.graine, profil=profil)
+        duree = (datetime.now(timezone.utc) - debut).total_seconds()
+        print(f"\n{a.eleves} élèves simulés « {profil or 'historique'} », chapitre {a.chapitre} ({duree:.0f} s)")
+        for nom, m in res.items():
+            print(m.ligne(nom))
     return 0
 
 
@@ -151,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--niveau", default="3e")
     b.add_argument("--eleves", type=int, default=100)
     b.add_argument("--graine", type=int, default=1)
+    b.add_argument("--profil", default="tous", choices=["tous", "fort", "moyen", "fragile", "historique"])
     b.set_defaults(f=cmd_benchmark)
     w = sp.add_parser("serveur", help="API + interface élève")
     w.add_argument("--donnees", default="donnees", help="dossier des bases SQLite (identité et journal séparés)")

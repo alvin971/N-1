@@ -58,6 +58,23 @@ class Contenu:
                     if hors:
                         pbs.append(f"modèle {m.id} : erreurs produites non déclarées {sorted(hors)}")
                         break
+        for ch in g.chapitres.values():
+            sous = set(g.sous_graphe(list(ch.cibles)))
+            for m in self.modeles.values():
+                if m.kc_principale not in sous:
+                    continue
+                for d in m.difficultes:
+                    hors = [k for k in m.kcs_mobilisees(d) if k not in sous]
+                    if hors:
+                        pbs.append(f"modèle {m.id} (difficulté {d}) mobilise {hors}, hors du chapitre {ch.id} : "
+                                   "ajouter le prérequis manquant au graphe")
+        for m in self.modeles.values():
+            for d, ks in m.mobilise.items():
+                for k in ks:
+                    if k not in g.kcs:
+                        pbs.append(f"modèle {m.id} : KC mobilisée inconnue {k}")
+                    elif g.kcs[k].rang > g.kcs[m.kc_principale].rang:
+                        pbs.append(f"modèle {m.id} : mobilise {k} de niveau supérieur à sa KC principale")
         for kc in g.kcs:
             if not self.modeles_diagnostic(kc):
                 pbs.append(f"KC {kc} : aucun modèle diagnostique")

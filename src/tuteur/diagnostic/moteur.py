@@ -4,12 +4,18 @@ Modèle (proche de la Knowledge Space Theory / réseau bayésien « noisy-AND »
   * état de connaissance = vecteur booléen « KC maîtrisée ? » sur le sous-graphe ;
   * a priori : une KC est très improbable si l'un de ses prérequis FORTS n'est pas maîtrisé
     (les états sont presque « fermés vers le bas ») ;
-  * vraisemblance d'une réponse : 1 − slip si la KC est maîtrisée, guess sinon ; une erreur
-    typique reconnue pointe vers SA KC (souvent plus basse) : c'est un raccourci vers la racine ;
+  * vraisemblance d'une réponse : un exercice MOBILISE plusieurs compétences (toutes ses parties
+    techniques) ; P(réussite) = 1 − slip si TOUTES sont maîtrisées, guess sinon. Une réussite sur
+    un exercice large valide donc d'un coup tous les acquis qu'il contient. Une erreur typique
+    reconnue pointe vers SA KC (souvent plus basse) : c'est un raccourci vers la racine ;
   * inférence : population d'états (particules) + rééchantillonnage + mouvements de
     Metropolis-Hastings (pas d'appauvrissement des particules) ;
-  * question suivante : maximise le gain d'information attendu (réduction d'entropie des
-    marginales) par seconde de réponse estimée → sur une chaîne, cela revient à une dichotomie ;
+  * stratégie « descendante » (défaut) : on teste d'abord le PRÉSENT, avec l'exercice le plus
+    large du chapitre au niveau le plus difficile ; on ne descend que dans les parties d'un
+    exercice raté (et dans la KC d'une erreur typique), avec des exercices de plus en plus ciblés ;
+    une compétence validée par une réussite plus haut n'est jamais re-testée ;
+  * parmi les questions autorisées : gain d'information attendu maximal (réduction d'entropie des
+    marginales) par seconde de réponse estimée ;
   * arrêt : toutes les marginales tranchées, ou gain attendu négligeable, ou budget atteint.
 
 Tout est déterministe à graine fixée, explicable (on garde les preuves), et ne fait appel à
@@ -18,7 +24,7 @@ aucun LLM.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -46,6 +52,11 @@ class ParamsDiagnostic:
     qcm: bool = False
     balayages_mh: int = 4
     poids_temps: float = 0.5  # 1 = gain par seconde ; 0 = ignorer le temps (0,5 : compromis, évite les questions trop faciles)
+    strategie: str = "descendante"  # « descendante » (part du présent) ou « exhaustive » (tout le sous-graphe)
+    # Démarche « hypothèse → vérification » : une notion n'est déclarée LACUNE qu'avec au moins
+    # `preuves_lacune` preuves DIRECTES (exercice raté qui la cible, ou erreur typique qui la désigne).
+    # Une erreur isolée ne produit qu'une hypothèse, que l'on vérifie par des exercices ciblés.
+    preuves_lacune: int = 2
 
 
 @dataclass(frozen=True)
@@ -55,41 +66,58 @@ class Observation:
     statut: Statut
     erreur_type: str | None
     p_guess: float
+    kcs: tuple[str, ...] = ()  # compétences mobilisées par l'exercice (kcs[0] = principale)
+
+    @property
+    def mobilisees(self) -> tuple[str, ...]:
+        return self.kcs or (self.kc,)
 
 
 @dataclass
 class ResultatDiagnostic:
     marginales: dict[str, float]
-    frontiere: list[str]
+    frontiere: list[str]  # lacunes racines CONFIRMÉES (preuves directes suffisantes)
     parcours: list[str]
     observations: list[Observation]
     raison_arret: str
+    hypotheses: list[str] = field(default_factory=list)  # probablement non acquises, pas encore confirmées
+    presumees: list[str] = field(default_factory=list)  # validées seulement via des exercices complets
+    preuves: dict[str, tuple[int, int]] = field(default_factory=dict)  # kc -> (échecs directs, réussites directes)
 
     def maitrisee(self, kc: str, seuil: float = 0.5) -> bool:
         return self.marginales[kc] >= seuil
 
-    def explication_eleve(self, contenu: Contenu) -> list[str]:
-        """Version pour l'élève : concrète, sans probabilités ni identifiants."""
+    def explication_eleve(self, contenu: Contenu, cibles: tuple[str, ...] = ()) -> list[str]:
+        """Bilan pour l'élève, sans probabilités : ce qui est PROUVÉ, ce qui n'est qu'une hypothèse,
+        et ce qui est présumé acquis."""
+        g = contenu.graphe
         lignes = []
         for kc in self.frontiere:
-            k = contenu.graphe.kcs[kc]
-            ratees = [o for o in self.observations if o.statut is not Statut.CORRECT
-                      and (o.kc == kc or (o.erreur_type and contenu.erreurs[o.erreur_type].kc == kc))]
-            erreurs = sorted({contenu.erreurs[o.erreur_type].titre.lower() for o in ratees if o.erreur_type})
-            if ratees:
-                detail = f"{len(ratees)} question{'s' if len(ratees) > 1 else ''} de ce type t'{'ont' if len(ratees) > 1 else 'a'} posé problème"
-            else:
-                detail = "c'est la base qui manque pour la suite"
+            echecs, _ = self.preuves.get(kc, (0, 0))
+            erreurs = sorted({contenu.erreurs[o.erreur_type].titre.lower() for o in self.observations
+                              if o.erreur_type and contenu.erreurs[o.erreur_type].kc == kc})
+            detail = f"{echecs} exercices ratés qui la ciblent"
             if erreurs:
-                detail += f" (erreur repérée : {erreurs[0]})"
-            lignes.append(f"{k.titre} ({k.niveau}) : {detail}.")
+                detail += f", erreur repérée : {erreurs[0]}"
+            lignes.append(f"Lacune confirmée — {g.kcs[kc].titre} ({g.kcs[kc].niveau}) : {detail}.")
+        for kc in self.hypotheses:
+            if kc in cibles:
+                continue
+            echecs, _ = self.preuves.get(kc, (0, 0))
+            pourquoi = ("une seule erreur pour l'instant : ce n'est pas encore une conclusion" if echecs == 1
+                        else "un exercice complet raté la met en cause, sans preuve directe")
+            lignes.append(f"À vérifier — {g.kcs[kc].titre} ({g.kcs[kc].niveau}) : {pourquoi}.")
+        if self.presumees:
+            lignes.append(f"Présumées acquises — {len(self.presumees)} notions réussies dans des exercices complets : "
+                          "elles seront confirmées pendant l'entraînement.")
         return lignes
 
     def explication(self, contenu: Contenu) -> list[str]:
         """Justification détaillée (enseignant, parent, export) des conclusions."""
         lignes = []
         for kc in self.frontiere:
-            preuves = [o for o in self.observations if o.kc == kc or (o.erreur_type and contenu.erreurs[o.erreur_type].kc == kc)]
+            preuves = [o for o in self.observations
+                       if kc in o.mobilisees or (o.erreur_type and contenu.erreurs[o.erreur_type].kc == kc)]
             detail = ", ".join(
                 f"{'réussi' if o.statut is Statut.CORRECT else 'échoué'} ({o.item.split('@')[0]}"
                 + (f", erreur typique : {contenu.erreurs[o.erreur_type].titre}" if o.erreur_type else "")
@@ -183,7 +211,8 @@ class Diagnostic:
     # ------------------------------------------------------------------ vraisemblance
     def _vraisemblance(self, e: np.ndarray, o: Observation) -> np.ndarray:
         pr = self.params
-        m = e[:, self.idx[o.kc]]
+        colonnes = [self.idx[k] for k in o.mobilisees if k in self.idx]
+        m = e[:, colonnes].all(axis=1)  # réussir exige TOUTES les compétences mobilisées
         if o.statut is Statut.CORRECT:
             return np.where(m, 1 - pr.p_slip, o.p_guess)
         if o.statut is Statut.INCORRECT:
@@ -227,20 +256,101 @@ class Diagnostic:
         return {k: float(m[i]) for k, i in self.idx.items()}
 
     # ------------------------------------------------------------------ choix de la question
-    def _item_pour(self, kc: str) -> Item | None:
+    def _item_pour(self, kc: str, difficulte: int | None = None) -> Item | None:
         modeles = self.c.modeles_diagnostic(kc)
         if not modeles:
             return None
         self._compteur_graines += 1
         m = modeles[self._compteur_graines % len(modeles)]
-        return m.instancier(self.graine * 10_000 + self._compteur_graines, self.params.difficulte, qcm=self.params.qcm)
+        d = self.params.difficulte if difficulte is None else difficulte
+        return m.instancier(self.graine * 10_000 + self._compteur_graines, d, qcm=self.params.qcm)
+
+    def _difficultes(self, kc: str) -> list[int]:
+        if self.params.strategie != "descendante":
+            return [self.params.difficulte]
+        return sorted({d for m in self.c.modeles_diagnostic(kc) for d in m.difficultes}, reverse=True)
+
+    def _epreuve_large(self) -> Item | None:
+        """Première question : l'exercice du chapitre qui mobilise le plus de compétences, au niveau
+        le plus difficile (« on teste le présent, en ratissant large »)."""
+        meilleur: tuple[int, str, int] | None = None
+        for kc in self.cibles:
+            for m in self.c.modeles_diagnostic(kc):
+                d = max(m.difficultes)
+                n = len([k for k in m.kcs_mobilisees(d) if k in self.idx])
+                if meilleur is None or n > meilleur[0]:
+                    meilleur = (n, kc, d)
+        return None if meilleur is None else self._item_pour(meilleur[1], meilleur[2])
+
+    def preuves(self, kc: str) -> tuple[int, int]:
+        """(échecs directs, réussites directes) sur `kc` : exercices dont c'est la notion PRINCIPALE,
+        et erreurs typiques qui la désignent. Un exercice complet raté n'est PAS une preuve directe
+        sur chacune de ses parties : il ne fait que produire des hypothèses."""
+        echecs = reussites = 0
+        for o in self.observations:
+            kc_err = self.c.erreurs[o.erreur_type].kc if o.erreur_type else None
+            if o.kc == kc:
+                if o.statut is Statut.CORRECT:
+                    reussites += 1
+                elif o.statut is Statut.INCORRECT:
+                    echecs += 1
+            elif kc_err == kc:
+                echecs += 1
+        return echecs, reussites
+
+    def _confirmee(self, kc: str) -> bool:
+        echecs, reussites = self.preuves(kc)
+        return echecs >= self.params.preuves_lacune and echecs > reussites
+
+    def _hypotheses_ouvertes(self, marg: np.ndarray, eligibles: set[str]) -> list[str]:
+        """HYPOTHÈSES à vérifier : notions ayant au moins un échec DIRECT (exercice ciblé raté ou
+        erreur typique qui les désigne), pas encore confirmées. Une notion seulement « suspecte »
+        (partie d'un exercice complet raté) n'est pas une hypothèse : on l'explore avec des
+        exercices plus ciblés, choisis par gain d'information."""
+        confirmees = {k for k in self.kcs if self._confirmee(k)}
+        return [k for k in self.kcs
+                if k in eligibles and marg[self.idx[k]] < 0.5 and k not in confirmees
+                and self.preuves(k)[0] >= 1
+                and not self._explique_par(k, confirmees)
+                and self._compte_kc(k) < self.params.max_par_kc]
+
+    def _explique_par(self, kc: str, lacunes: set[str]) -> bool:
+        """L'échec sur `kc` s'explique par une lacune déjà établie sur l'un de ses prérequis."""
+        return any(a in lacunes for a in self.g.ancetres(kc, inclure=False))
+
+    def eligibles(self, marg: np.ndarray | None = None) -> set[str]:
+        """KC qu'on a le droit de tester. Stratégie descendante : les cibles du chapitre, les parties
+        des exercices ratés, la KC des erreurs typiques observées, puis — si l'une d'elles semble non
+        acquise — ses prérequis forts (on continue de descendre). Le reste est validé par les acquis."""
+        if self.params.strategie != "descendante":
+            return set(self.kcs)
+        marg = self.etats.mean(axis=0) if marg is None else marg
+        el = set(self.cibles)
+        echouees: set[str] = set()  # KC directement mises en cause par un échec observé
+        for o in self.observations:
+            if o.statut in (Statut.INCORRECT, Statut.FORME):
+                echouees |= {k for k in o.mobilisees if k in self.idx}
+            if o.erreur_type and self.c.erreurs[o.erreur_type].kc in self.idx:
+                echouees.add(self.c.erreurs[o.erreur_type].kc)
+        el |= echouees
+        # on ne descend sous une KC que si un ÉCHEC la met en cause et qu'elle semble non acquise ;
+        # une KC simplement pas encore testée se teste d'abord elle-même (on part du présent)
+        pile = [k for k in el if k in echouees]
+        while pile:
+            k = pile.pop()
+            if marg[self.idx[k]] < 0.5:
+                for p in self.g.prereqs(k):  # prérequis forts ET faibles : on cherche la racine
+                    if p in self.idx and p not in el:
+                        el.add(p)
+                        pile.append(p)
+        return el
 
     def _gain_attendu(self, kc: str, item: Item) -> float:
         e = self.etats
         h0 = _entropie(e.mean(axis=0))
-        issues = [Observation(kc, item.cle, Statut.CORRECT, None, item.proba_hasard),
-                  Observation(kc, item.cle, Statut.INCORRECT, None, item.proba_hasard)]
-        issues += [Observation(kc, item.cle, Statut.INCORRECT, err, item.proba_hasard) for err in item.spec.erreurs]
+        issues = [Observation(kc, item.cle, Statut.CORRECT, None, item.proba_hasard, item.kcs),
+                  Observation(kc, item.cle, Statut.INCORRECT, None, item.proba_hasard, item.kcs)]
+        issues += [Observation(kc, item.cle, Statut.INCORRECT, err, item.proba_hasard, item.kcs) for err in item.spec.erreurs]
         lik = np.array([self._vraisemblance(e, o) for o in issues])  # (issues, particules)
         # normalisation : les vraisemblances d'issues « incorrect » se partagent la masse d'échec
         tot = lik.sum(axis=0, keepdims=True)
@@ -264,28 +374,60 @@ class Diagnostic:
         n = len(self.observations)
         if n >= self.params.questions_max:
             return self._arreter("budget de questions atteint")
-        if n >= self.params.questions_min and all(p < self.params.seuil_bas or p > self.params.seuil_haut for p in marg):
-            return self._arreter("toutes les compétences sont tranchées")
+        if n == 0 and self.params.strategie == "descendante":
+            item = self._epreuve_large()
+            if item is not None:
+                self._items_poses.add(item.cle)
+                return item
+        eligibles = self.eligibles(marg)
+        a_trancher = [k for k in self.kcs if k in eligibles]
+        hypotheses = self._hypotheses_ouvertes(marg, eligibles) if self.params.strategie == "descendante" else []
+        if n >= self.params.questions_min and not hypotheses and all(
+            marg[self.idx[k]] < self.params.seuil_bas or marg[self.idx[k]] > self.params.seuil_haut for k in a_trancher
+        ):
+            return self._arreter("toutes les compétences à vérifier sont tranchées")
+        if hypotheses:
+            # vérifier une hypothèse : exercice CIBLÉ sur la notion, en commençant par le plus simple
+            # (les autres notions y sont triviales), avec une variante différente des précédentes
+            item = self._verifier_hypothese(hypotheses, marg)
+            if item is not None:
+                self._items_poses.add(item.cle)
+                return item
         meilleur: tuple[float, Item] | None = None
-        for kc in self.kcs:
+        for kc in a_trancher:
             if self._compte_kc(kc) >= self.params.max_par_kc:
                 continue
             p = marg[self.idx[kc]]
             if n >= self.params.questions_min and (p < 0.05 or p > 0.97):
                 continue
-            item = self._item_pour(kc)
-            if item is None:
-                continue
-            temps = self.c.modeles[item.modele].temps_estime_s
-            score = self._gain_attendu(kc, item) / (temps / 30.0) ** self.params.poids_temps
-            if meilleur is None or score > meilleur[0] + 1e-9:
-                meilleur = (score, item)
+            for d in self._difficultes(kc):
+                item = self._item_pour(kc, d)
+                if item is None:
+                    continue
+                temps = self.c.modeles[item.modele].temps_estime_s
+                score = self._gain_attendu(kc, item) / (temps / 30.0) ** self.params.poids_temps
+                if meilleur is None or score > meilleur[0] + 1e-9:
+                    meilleur = (score, item)
         if meilleur is None:
             return self._arreter("plus aucune question informative disponible")
-        if n >= self.params.questions_min and meilleur[0] < self.params.gain_min:
+        if n >= self.params.questions_min and meilleur[0] < self.params.gain_min and not hypotheses:
             return self._arreter("gain d'information attendu négligeable")
         self._items_poses.add(meilleur[1].cle)
         return meilleur[1]
+
+    def _verifier_hypothese(self, hypotheses: list[str], marg: np.ndarray) -> Item | None:
+        """Vérifie d'abord la notion la PLUS ANCIENNE (racine probable : si elle est confirmée, les échecs
+        au-dessus sont expliqués et n'ont plus à être vérifiés), avec un exercice qui l'isole :
+        difficulté la plus basse, variante (modèle, difficulté) pas encore posée."""
+        hypotheses = sorted(hypotheses, key=lambda k: (rang_niveau(self.g.kcs[k].niveau), round(marg[self.idx[k]], 1), k))
+        for kc in hypotheses:
+            deja = {(o.item.split("@")[0], o.item.rsplit("/d", 1)[-1]) for o in self.observations if o.kc == kc}
+            for m in self.c.modeles_diagnostic(kc):
+                for d in sorted(m.difficultes):
+                    if (m.id, str(d)) not in deja:
+                        self._compteur_graines += 1
+                        return m.instancier(self.graine * 10_000 + self._compteur_graines, d, qcm=self.params.qcm)
+        return None
 
     def _arreter(self, raison: str) -> None:
         self.termine = True
@@ -293,7 +435,7 @@ class Diagnostic:
         return None
 
     def enregistrer(self, item: Item, verdict: Verdict) -> None:
-        o = Observation(item.kcs[0], item.cle, verdict.statut, verdict.erreur_type, item.proba_hasard)
+        o = Observation(item.kcs[0], item.cle, verdict.statut, verdict.erreur_type, item.proba_hasard, item.kcs)
         self.observations.append(o)
         if verdict.statut is not Statut.ILLISIBLE:
             self._mettre_a_jour(o)
@@ -302,13 +444,19 @@ class Diagnostic:
     def resultat(self, seuil_parcours: float | None = None) -> ResultatDiagnostic:
         seuil_parcours = self.params.seuil_haut if seuil_parcours is None else seuil_parcours
         marg = self.marginales()
-        frontiere = [
+        racines = [
             k for k in self.kcs
             if marg[k] < 0.5 and all(marg[p] >= 0.5 for p in self.g.prereqs(k, True) if p in marg)
         ]
+        exige_preuves = self.params.strategie == "descendante"
+        frontiere = [k for k in racines if self._confirmee(k) or not exige_preuves]
+        lacunes = set(frontiere)
+        hypotheses = [k for k in self.kcs if marg[k] < 0.5 and k not in frontiere and not self._explique_par(k, lacunes)]
+        presumees = [k for k in self.kcs if marg[k] >= 0.5 and self.preuves(k)[1] == 0]
         a_travailler = {k for k in self.kcs if marg[k] < seuil_parcours} | set(self.cibles)
         parcours = parcours_remediation(self.c, a_travailler, marg)
-        return ResultatDiagnostic(marg, frontiere, parcours, list(self.observations), self.raison_arret or "en cours")
+        return ResultatDiagnostic(marg, frontiere, parcours, list(self.observations), self.raison_arret or "en cours",
+                                  hypotheses, presumees, {k: self.preuves(k) for k in self.kcs})
 
 
 def parcours_remediation(contenu: Contenu, a_travailler: set[str], marginales: dict[str, float]) -> list[str]:

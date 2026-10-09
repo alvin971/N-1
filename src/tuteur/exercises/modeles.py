@@ -562,7 +562,7 @@ def _(rng, d):
 
 
 @modele("eq.parentheses.resoudre", ["eq.avec_parentheses", "lit.simple_distributivite"],
-        erreurs=("lit.distributivite_premier_terme_seulement",), temps_estime_s=75)
+        erreurs=("lit.distributivite_premier_terme_seulement", "eq.transposition_sans_changement_signe"), temps_estime_s=90)
 def _(rng, d):
     k, b = rng.randint(2, 9), nz(rng, -9, 9)
     if d == 1:
@@ -573,6 +573,24 @@ def _(rng, d):
             f"Résous l'équation {k}(x {terme(b)}) = {c}.",
             SpecReponse("solutions", sol(v), ("fraction_irreductible",), {"lit.distributivite_premier_terme_seulement": sol(R(c - b, k))}),
             (f"{k}(x {terme(b)}) = {c}", f"{k}x {terme(k * b)} = {c}", f"{k}x = {c - k * b}", f"x = {fr(v)}"),
+        )
+    if d == 3:
+        # exercice de synthèse : parenthèses + coefficient fractionnaire + x dans les deux membres
+        while True:
+            pn, q = rng.randint(1, 7), rng.randint(2, 5)
+            if gcd(pn, q) == 1 and R(pn, q) != k:
+                break
+        coef = R(pn, q)
+        t = nz(rng, -4, 4)
+        v = R(q * t)  # solution construite d'abord : multiple de q, pour un second membre entier
+        c = int(k * (v + b) - coef * v)
+        return Brouillon(
+            f"Résous l'équation {k}(x {terme(b)}) = ({pn}/{q})x {terme(c)}.",
+            SpecReponse("solutions", sol(v), ("fraction_irreductible",),
+                        {"lit.distributivite_premier_terme_seulement": sol((c - b) / (k - coef)),
+                         "eq.transposition_sans_changement_signe": sol((c - k * b) / (k + coef))}),
+            (f"{k}(x {terme(b)}) = ({pn}/{q})x {terme(c)}", f"{k}x {terme(k * b)} = ({pn}/{q})x {terme(c)}",
+             f"{k}x - ({pn}/{q})x = {c} {terme(-k * b)}", f"({fr(k - coef)})x = {c - k * b}", f"x = {fr(v)}"),
         )
     while True:
         m = rng.randint(1, 9) * rng.choice([1, -1])
@@ -612,7 +630,19 @@ def _(rng, d):
     a, b = nz(rng, -9, 9), nz(rng, -9, 9)
     if a == b:
         b = -b if b != -b else b + 1
-    if d < 3:
+    if d == 3:
+        # cas classique de 3e : il faut d'abord FACTORISER (x² + kx = 0 → x(x + k) = 0)
+        m, k = rng.randint(1, 4), nz(rng, -12, 12)
+        while gcd(m, abs(k)) != 1:
+            k += 1 if k > 0 else -1
+        ecrit = "x²" if m == 1 else f"{m}x²"
+        return Brouillon(
+            f"Résous l'équation {ecrit} {coef_x(k, premier=False)} = 0.",
+            SpecReponse("solutions", sol(0, R(-k, m)), ("fraction_irreductible",), {"eq.produit_nul_signes": sol(0, R(k, m))}),
+            (f"On factorise par x : x({coef_x(m)} {terme(k)}) = 0.", "Un produit est nul si l'un au moins de ses facteurs est nul.",
+             f"x = 0 ou {coef_x(m)} {terme(k)} = 0", f"x = 0 ou x = {fr(R(-k, m))}"),
+        )
+    if d == 1:
         return Brouillon(
             f"Résous l'équation (x {terme(a)})(x {terme(b)}) = 0.",
             SpecReponse("solutions", sol(-a, -b), (), {"eq.produit_nul_signes": sol(a, b)}),
@@ -628,3 +658,87 @@ def _(rng, d):
         ("Un produit est nul si l'un au moins de ses facteurs est nul.",
          f"{m}x {terme(a)} = 0 ou x {terme(b)} = 0", f"x = {fr(R(-a, m))} ou x = {-b}"),
     )
+
+
+# ====================================================================== compétences mobilisées
+#
+# « Les maths fonctionnent par acquis » : un exercice d'un niveau donné contient toutes ses parties
+# techniques. Pour chaque modèle et chaque difficulté, on liste les compétences qu'une RÉUSSITE
+# valide (en plus de la compétence principale). Le diagnostic part du présent avec les exercices
+# les plus larges et ne descend que dans les parties d'un exercice raté.
+# À faire relire par un enseignant : c'est de la connaissance didactique, pas du code.
+
+_REL = ("rel.addition", "rel.soustraction")
+_EQ_BASE = ("eq.x_plus_a_egal_b", "eq.ax_egal_b", "eq.ax_plus_b_egal_c")
+_SOL_FRAC = ("frac.quotient_entiers", "frac.simplification", "calc.multiples_diviseurs", "rel.division")
+
+MOBILISE: dict[str, dict[int, tuple[str, ...]]] = {
+    # équations (3e)
+    "eq.parentheses.resoudre": {
+        1: ("lit.simple_distributivite", "rel.multiplication", *_EQ_BASE, *_REL),
+        2: ("lit.simple_distributivite", "rel.multiplication", "eq.inconnue_deux_membres", "lit.reduction",
+            *_EQ_BASE, *_REL, *_SOL_FRAC),
+        3: ("lit.simple_distributivite", "rel.multiplication", "eq.inconnue_deux_membres", "lit.reduction",
+            "eq.coefficients_fractionnaires", "frac.division", "frac.multiplication", "frac.addition_quelconque",
+            *_EQ_BASE, *_REL, *_SOL_FRAC),
+    },
+    "eq.coeff_fraction.resoudre": {
+        1: ("frac.division", "frac.multiplication", *_EQ_BASE, *_REL),
+        2: ("frac.division", "frac.multiplication", *_EQ_BASE, *_REL),
+        3: ("frac.division", "frac.multiplication", "frac.addition_quelconque", *_EQ_BASE, *_REL, *_SOL_FRAC),
+    },
+    "eq.produit_nul.resoudre": {
+        1: ("eq.x_plus_a_egal_b", *_REL),
+        2: (*_EQ_BASE, *_REL, *_SOL_FRAC),
+        3: ("lit.factorisation_facteur_commun", "lit.simple_distributivite", *_EQ_BASE, *_REL, *_SOL_FRAC),
+    },
+    # équations (4e)
+    "eq.deux_membres.resoudre": {
+        1: ("lit.reduction", *_EQ_BASE),
+        2: ("lit.reduction", *_EQ_BASE, *_REL, *_SOL_FRAC),
+        3: ("lit.reduction", *_EQ_BASE, *_REL, *_SOL_FRAC),
+    },
+    "eq.ax_plus_b.resoudre": {
+        1: ("eq.x_plus_a_egal_b", "eq.ax_egal_b"),
+        2: ("eq.x_plus_a_egal_b", "eq.ax_egal_b", *_REL, "rel.division"),
+        3: ("eq.x_plus_a_egal_b", "eq.ax_egal_b", *_REL, *_SOL_FRAC),
+    },
+    "eq.ax.resoudre": {2: ("rel.division",), 3: _SOL_FRAC},
+    "eq.x_plus_a.resoudre": {2: _REL, 3: _REL},
+    # calcul littéral
+    "lit.distributivite.double": {
+        1: ("lit.simple_distributivite", "lit.reduction", "rel.multiplication", "rel.addition"),
+        2: ("lit.simple_distributivite", "lit.reduction", "rel.multiplication", "rel.addition"),
+        3: ("lit.simple_distributivite", "lit.reduction", "rel.multiplication", "rel.addition", "calc.multiplication_entiers"),
+    },
+    "lit.factorisation.facteur_commun": {2: ("calc.multiples_diviseurs",)},
+    "lit.factorisation.difference_carres": {1: ("calc.tables_multiplication",), 2: ("calc.tables_multiplication",)},
+    "lit.distributivite.simple": {2: ("rel.multiplication",), 3: ("rel.multiplication",)},
+    "lit.reduction.somme": {2: ("rel.addition",), 3: ("rel.addition",)},
+    "lit.substitution.valeur": {1: ("calc.priorites_operatoires",), 2: ("calc.priorites_operatoires",),
+                                3: ("calc.priorites_operatoires",)},
+    # fractions
+    "frac.division.quotient": {d: ("frac.multiplication", "frac.simplification", "calc.multiplication_entiers") for d in (1, 2, 3)},
+    "frac.multiplication.produit": {1: ("frac.simplification", "calc.multiplication_entiers"),
+                                    2: ("frac.simplification", "calc.multiplication_entiers", "rel.multiplication"),
+                                    3: ("frac.simplification", "calc.multiplication_entiers", "rel.multiplication")},
+    "frac.addition.quelconque": {1: ("frac.egalite_fractions", "frac.addition_meme_denominateur", "frac.simplification"),
+                                 2: ("frac.egalite_fractions", "frac.addition_meme_denominateur", "frac.simplification"),
+                                 3: ("frac.egalite_fractions", "frac.addition_meme_denominateur", "frac.simplification",
+                                     "rel.addition")},
+    "frac.addition.den_multiples": {d: ("frac.egalite_fractions", "frac.addition_meme_denominateur") for d in (1, 2, 3)},
+    # relatifs
+    "rel.division.calcul": {d: ("rel.multiplication",) for d in (1, 2)},
+}
+
+
+def _appliquer_mobilise() -> None:
+    from dataclasses import replace
+
+    from .base import REGISTRE
+
+    for id_modele, par_difficulte in MOBILISE.items():
+        REGISTRE[id_modele] = replace(REGISTRE[id_modele], mobilise=par_difficulte)
+
+
+_appliquer_mobilise()

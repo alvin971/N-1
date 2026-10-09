@@ -1,10 +1,14 @@
 name: Site de démonstration (GitHub Pages)
 
 # Construit la version « tout dans le navigateur » du tuteur (Python via Pyodide), la teste dans
-# un vrai navigateur, puis la publie sur GitHub Pages (uniquement depuis main).
+# un vrai navigateur, puis la publie sur GitHub Pages.
+# Publication depuis main, et aussi depuis la branche de travail de Claude : la règle de
+# protection de l'environnement `github-pages` a été créée quand cette branche était la branche
+# par défaut et n'autorise qu'elle. Quand `main` y sera ajoutée (Settings → Environments →
+# github-pages), cette seconde branche pourra être retirée d'ici.
 on:
   push:
-    branches: [main]
+    branches: [main, claude/cloud-credits-usage-vhjw1p]
   pull_request:
   workflow_dispatch:
 

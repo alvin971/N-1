@@ -13,12 +13,16 @@ Principes :
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from typing import Callable
 
 import sympy
 
-from ..mathengine import SpecReponse, corriger, egalite_ensembles, equivalentes
+from ..mathengine import (
+    ErreurLecture, SpecReponse, Statut, StatutLigne, Verdict, corriger, egalite_ensembles, equivalentes, lire_equation,
+    verifier_resolution,
+)
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,48 @@ class Item:
     def corriger(self, saisie: str):
         return corriger(self.spec, saisie)
 
+    # ------------------------------------------------------------------ résolution rédigée (« la copie »)
+    @property
+    def equation_depart(self) -> str | None:
+        """Équation de l'énoncé, si l'exercice demande de résoudre une équation (sinon None)."""
+        if self.spec.type != "solutions" or "équation " not in self.enonce:
+            return None
+        texte = self.enonce.split("équation ", 1)[1].strip()
+        texte = re.sub(r"\s*\((?:solution|réponse)[^)]*\)\s*\.?$", "", texte).strip().rstrip(".")
+        try:
+            lire_equation(texte)
+        except ErreurLecture:
+            return None
+        return texte
+
+    @property
+    def etapes_possibles(self) -> bool:
+        """Rédaction ligne par ligne possible : équation à une seule inconnue sans « ou »
+        (le produit nul se rédige avec des disjonctions que le vérificateur ne lit pas)."""
+        return self.equation_depart is not None and len(self.spec.valeur) == 1  # type: ignore[arg-type]
+
+    def corriger_etapes(self, lignes: list[str]):
+        """Corrige une résolution rédigée. Chaque égalité doit garder les solutions de la précédente ;
+        la PREMIÈRE ligne fausse est localisée et l'erreur typique qui la produit, si elle est
+        reconnue, est une preuve directe sur la notion en cause. La dernière ligne donne la réponse."""
+        lignes = [l.strip() for l in lignes if l and l.strip()]
+        if not lignes:
+            return Verdict(Statut.ILLISIBLE, "Écris au moins la solution."), None
+        final = corriger(self.spec, lignes[-1])
+        egalites = [l for l in lignes if "=" in l and ";" not in l and " ou " not in l]
+        depart = self.equation_depart
+        if depart is None or not egalites:
+            return final, None
+        rapport = verifier_resolution([depart] + egalites, self.spec.variable)
+        if rapport.premiere_erreur is None:
+            return final, rapport
+        ligne = rapport.lignes[rapport.premiere_erreur]
+        if ligne.statut is StatutLigne.ILLISIBLE:
+            return Verdict(Statut.ILLISIBLE, f"Je n'arrive pas à lire la ligne « {ligne.texte} »."), rapport
+        erreur = ligne.erreur_type or final.erreur_type
+        message = f"La ligne « {ligne.texte} » n'a plus les mêmes solutions que la précédente."
+        return Verdict(Statut.INCORRECT, message, erreur, final.lu), rapport
+
 
 @dataclass(frozen=True)
 class Brouillon:
@@ -72,10 +118,19 @@ class Modele:
     qcm_possible: bool = True
     temps_estime_s: int = 40
     erreurs: tuple[str, ...] = ()  # erreurs typiques que ce modèle sait produire
+    # Compétences MOBILISÉES selon la difficulté : un exercice de haut niveau contient toutes ses
+    # parties techniques (ex. résoudre 2(x − 3) = ½x + 4 mobilise distributivité, relatifs,
+    # fractions, réduction…). Une réussite valide donc toutes ces acquisitions à la fois.
+    mobilise: dict[int, tuple[str, ...]] = field(default_factory=dict)
 
     @property
     def kc_principale(self) -> str:
         return self.kcs[0]
+
+    def kcs_mobilisees(self, difficulte: int) -> tuple[str, ...]:
+        """Q-matrix effective à cette difficulté : KC principale d'abord, puis toutes les parties."""
+        extra = tuple(k for k in self.mobilise.get(difficulte, ()) if k not in self.kcs)
+        return self.kcs + extra
 
     def instancier(self, graine: int, difficulte: int = 1, qcm: bool = False, essais_max: int = 200) -> Item:
         if difficulte not in self.difficultes:
@@ -88,7 +143,8 @@ class Modele:
             choix: tuple[str, ...] = ()
             if qcm and self.qcm_possible and b.spec.type != "booleen":
                 choix = construire_qcm(b.spec, rng)
-            return Item(self.id, self.version, graine, difficulte, self.kcs, b.enonce, b.spec, b.solution_redigee, choix)
+            return Item(self.id, self.version, graine, difficulte, self.kcs_mobilisees(difficulte), b.enonce, b.spec,
+                        b.solution_redigee, choix)
         raise RuntimeError(f"{self.id} : aucun exercice diagnostique trouvé en {essais_max} essais")
 
 
@@ -166,11 +222,13 @@ REGISTRE: dict[str, Modele] = {}
 
 
 def modele(id: str, kcs: list[str], *, version: int = 1, diagnostic: bool = True, erreurs: tuple[str, ...] = (),
-           difficultes: tuple[int, ...] = (1, 2, 3), qcm_possible: bool = True, temps_estime_s: int = 40):
+           difficultes: tuple[int, ...] = (1, 2, 3), qcm_possible: bool = True, temps_estime_s: int = 40,
+           mobilise: dict[int, tuple[str, ...]] | None = None):
     def deco(f: Callable[[random.Random, int], Brouillon]) -> Callable[[random.Random, int], Brouillon]:
         if id in REGISTRE:
             raise ValueError(f"modèle en double : {id}")
-        REGISTRE[id] = Modele(id, version, tuple(kcs), diagnostic, f, difficultes, qcm_possible, temps_estime_s, erreurs)
+        REGISTRE[id] = Modele(id, version, tuple(kcs), diagnostic, f, difficultes, qcm_possible, temps_estime_s, erreurs,
+                              dict(mobilise or {}))
         return f
 
     return deco

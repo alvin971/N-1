@@ -38,6 +38,37 @@ Reproduire : `tuteur benchmark --eleves 100 [--chapitre …] [--niveau …]` (gr
 pédagogique. La prochaine mesure sérieuse est un pilote réel comparant le diagnostic court à un
 test long exhaustif sur un échantillon d'élèves.
 
+## Stratégie « descendante » (on part du présent) — par profil d'élève
+
+Reproduire : `tuteur benchmark --eleves 60` (profils fort / moyen / fragile, chapitre équations 3e,
+31 KC). Profils : fort = aucune lacune racine, 15 % de notions de 3e non acquises ; moyen = 0–1
+lacune, 45 % ; fragile = 1–3 lacunes, 75 % ; plus 3 % de notions oubliées isolément partout.
+
+Avec la règle « une lacune exige 2 preuves directes » (démarche hypothèse → vérification) :
+
+| Profil | Stratégie | Exactitude KC | Lacunes confirmées | + hypothèses signalées | Précision | Questions |
+|---|---|---|---|---|---|---|
+| fort | **descendante** | **94,9 %** | 76,5 % | 79,2 % | **85,3 %** | **11,5** |
+| fort | exhaustive | 93,5 % | 82,2 % | 82,2 % | 71,8 % | 13,9 |
+| fort | descente naïve | 93,0 % | 68,0 % | 68,0 % | 68,0 % | 7,2 |
+| moyen | **descendante** | 94,5 % | 60,0 % | 67,3 % | 87,2 % | 15,3 |
+| moyen | exhaustive | 94,8 % | 85,3 % | 85,3 % | 87,9 % | 15,3 |
+| moyen | descente naïve | 88,3 % | 53,9 % | 53,9 % | 72,0 % | 11,0 |
+| fragile | **descendante** | 95,2 % | 55,1 % | 65,2 % | **96,0 %** | 17,1 |
+| fragile | exhaustive | 96,2 % | 83,1 % | 83,1 % | 92,3 % | 16,3 |
+| fragile | descente naïve | 84,2 % | 59,5 % | 59,5 % | 80,7 % | 14,9 |
+
+Lecture honnête :
+- la rigueur a un coût : à budget égal (18 questions), un élève qui a 2 ou 3 lacunes ne peut pas les
+  voir toutes confirmées dès le test ; elles restent « à vérifier » ou sont découvertes pendant
+  l'entraînement (descente sur erreur typique, compétence qui résiste) ;
+- la stratégie exhaustive « trouve » plus de lacunes car elle conclut sur des probabilités ; dans ce
+  simulateur, ses probabilités sont justes car les élèves simulés suivent le même modèle que le
+  diagnostic. Sur de vrais élèves, une conclusion fondée sur deux preuves directes est plus robuste
+  qu'une probabilité issue d'un modèle imparfait — à vérifier lors du pilote ;
+- les élèves simulés ne rédigent pas leurs résolutions : l'apport de la « copie » ligne par ligne
+  (une preuve directe et localisée à chaque équation) n'est pas mesuré ici.
+
 ## Cohérence du contenu (CI)
 
 Pour chaque modèle × difficulté × 25 graines : bonne réponse acceptée (valeur et forme), chaque

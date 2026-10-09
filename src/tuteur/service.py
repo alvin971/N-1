@@ -139,6 +139,16 @@ class Service:
                 del self.seances[sid]
         return {"efface": True, "evenements_supprimes": n}
 
+    def reinitialiser(self, eleve: str) -> dict:
+        """Repartir de zéro en gardant le compte : réponses, compétences et séance en cours
+        sont effacées ; identité, consentements et jeton sont conservés."""
+        with self.verrou:
+            n = self.journal.effacer_eleve(eleve)
+            self.profils.pop(eleve, None)
+            for sid in [s for s, (e, _) in self.seances.items() if e == eleve]:
+                del self.seances[sid]
+        return {"reinitialise": True, "evenements_supprimes": n}
+
     # ------------------------------------------------------------------ contenu
     def chapitres(self, eleve: str) -> list[dict]:
         with self.verrou:
@@ -172,22 +182,27 @@ class Service:
     def repondre(self, eleve: str, sid: str, corps: dict) -> dict:
         saisie = str(corps.get("saisie") or "")
         fmt = corps.get("format", "texte")
+        lignes = corps.get("lignes") or None
         if len(saisie) > 400 or fmt not in ("texte", "latex"):
             raise ErreurService(422, "réponse invalide")
+        if lignes is not None and (not isinstance(lignes, list) or len(lignes) > 20
+                                   or any(not isinstance(l, str) or len(l) > 200 for l in lignes)):
+            raise ErreurService(422, "résolution invalide (20 lignes au plus)")
         with self.verrou:
             s = self._seance(sid, eleve)
             if s.item_courant is None:
                 raise ErreurService(409, "aucune question en attente")
             if fmt == "latex":
                 try:
-                    saisie = latex_vers_texte(saisie)
+                    saisie = latex_vers_texte(saisie) if saisie else saisie
+                    lignes = [latex_vers_texte(l) for l in lignes if l.strip()] if lignes else None
                 except ErreurLecture as e:
                     return {"statut": Statut.ILLISIBLE.value, "juste": False, "texte": f"Je n'arrive pas à lire ta réponse : {e}.",
-                            "lu": None, "erreur": None}
-            r = s.repondre(saisie)
+                            "lu": None, "erreur": None, "etapes": []}
+            r = s.repondre(saisie, lignes)
             err = self.contenu.erreurs.get(r.verdict.erreur_type) if r.verdict.erreur_type else None
             return {"statut": r.verdict.statut.value, "juste": r.verdict.juste, "texte": r.texte, "lu": r.verdict.lu,
-                    "erreur": {"id": err.id, "titre": err.titre} if err else None}
+                    "erreur": {"id": err.id, "titre": err.titre} if err else None, "etapes": list(r.etapes)}
 
     def aide(self, eleve: str, sid: str) -> dict:
         with self.verrou:
@@ -230,6 +245,7 @@ _ROUTES: list[tuple[str, str, bool, _R, int]] = [
     ("POST", r"/api/moi/consentements", True, lambda s, e, c: s.consentir(e, c), 200),
     ("GET", r"/api/moi/export", True, lambda s, e, c: s.exporter(e), 200),
     ("DELETE", r"/api/moi", True, lambda s, e, c: s.effacer(e), 200),
+    ("POST", r"/api/moi/reinitialiser", True, lambda s, e, c: s.reinitialiser(e), 200),
     ("GET", r"/api/chapitres", True, lambda s, e, c: s.chapitres(e), 200),
     ("GET", r"/api/chapitres/([\w.-]+)/progression", True, lambda s, e, ch, c: s.progression(e, ch), 200),
     ("POST", r"/api/seances", True, lambda s, e, c: s.nouvelle_seance(e, c), 201),
@@ -283,6 +299,8 @@ def _action_json(contenu: Contenu, s: Session, a: Action) -> dict:
             "competence": kc.titre,
             "niveau": kc.niveau,
             "difficulte": a.item.difficulte,
+            "etapes_possibles": a.item.etapes_possibles,
+            "depart": a.item.equation_depart if a.item.etapes_possibles else None,
         }
     if a.type is TypeAction.FIN:
         d["escalades"] = [g.kcs[k].titre for k in s.escalades]

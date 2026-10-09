@@ -66,6 +66,7 @@ class Action:
 class Retour:
     verdict: Verdict
     texte: str
+    etapes: tuple[dict, ...] = ()  # résolution rédigée : verdict ligne par ligne
 
 
 @dataclass(frozen=True)
@@ -186,7 +187,7 @@ class Session:
         if self.mode is Mode.DIAGNOSTIC:
             item = self.diagnostic.prochaine_question()
             if item is not None:
-                return self._poser(item, Mode.DIAGNOSTIC, "c'est la question qui m'en apprend le plus sur ce que tu sais déjà")
+                return self._poser(item, Mode.DIAGNOSTIC, self._raison_diagnostic(item))
             self._terminer_diagnostic()
             return self.prochaine_action()
         if self.mode is Mode.REMEDIATION:
@@ -197,6 +198,14 @@ class Session:
                 return self._poser(self._nouvel_item(kc, 2), Mode.TRANSFERT, f"vérification au niveau du chapitre : {self.g.kcs[kc].titre}")
             self.mode = Mode.TERMINE
         return self._fin()
+
+    def _raison_diagnostic(self, item: Item) -> str:
+        if not self.diagnostic.observations:
+            return ("on commence par un exercice complet du chapitre : s'il est réussi, il valide d'un coup "
+                    "toutes les notions qu'il contient")
+        if item.kcs[0] in self.cibles:
+            return "exercice du chapitre, pour vérifier ce que tu sais déjà faire"
+        return "un exercice précédent n'a pas marché : on vérifie une des notions qu'il utilisait"
 
     def _poser(self, item: Item, mode: Mode, raison: str) -> Action:
         self.item_courant, self.mode_item, self.aide = item, mode, False
@@ -210,15 +219,31 @@ class Session:
         self._log("aide", {"item": self.item_courant.cle})
         return self.enseignant.indice(self.item_courant)  # type: ignore[union-attr]
 
-    def repondre(self, saisie: str) -> Retour:
+    def repondre(self, saisie: str, lignes: list[str] | None = None) -> Retour:
+        """`lignes` : résolution rédigée ligne par ligne (« la copie »), la dernière donnant la réponse.
+        La première ligne fausse est localisée et son erreur typique devient une preuve directe."""
         if self.item_courant is None or self.mode_item is None:
             raise RuntimeError("aucune question en attente")
         item, mode = self.item_courant, self.mode_item
-        verdict = item.corriger(saisie)
+        etapes: tuple[dict, ...] = ()
+        if lignes and item.etapes_possibles:
+            verdict, rapport = item.corriger_etapes(lignes)
+            saisie = " | ".join(l for l in lignes if l.strip())
+            if rapport is not None:
+                # comme un professeur : on signale la PREMIÈRE erreur, sans juger ce qui en découle
+                premiere = rapport.premiere_erreur
+                etapes = tuple(
+                    {"texte": l.texte,
+                     "statut": "suite" if premiere is not None and l.index > premiere else l.statut.value,
+                     "erreur": self.contenu.erreurs[l.erreur_type].titre if l.erreur_type and l.index == premiere else None}
+                    for l in rapport.lignes[1:]
+                )
+        else:
+            verdict = item.corriger(lignes[-1] if lignes else saisie)
         self.item_courant = None
         if verdict.statut is Statut.ILLISIBLE:
             self.item_courant = item  # on repose la même question
-            return Retour(verdict, self.enseignant.retour(item, verdict))  # type: ignore[union-attr]
+            return Retour(verdict, self.enseignant.retour(item, verdict), etapes)  # type: ignore[union-attr]
         maintenant = self.horloge()
         apprentissage = mode is not Mode.DIAGNOSTIC
         self._log("reponse", {
@@ -231,6 +256,7 @@ class Session:
         if mode is Mode.DIAGNOSTIC:
             self.diagnostic.enregistrer(item, verdict)
             texte = "Réponse enregistrée." if verdict.juste else "Réponse enregistrée (on fait le point à la fin du test)."
+            etapes = ()  # pendant le test, on ne corrige pas ligne par ligne devant l'élève
         elif mode is Mode.REMEDIATION:
             self._apres_remediation(item, verdict)
         elif mode is Mode.TRANSFERT and not verdict.juste:
@@ -240,7 +266,9 @@ class Session:
                 self.file.append(kc)
                 self.mode = Mode.REMEDIATION
                 self.a_faire.append(Action(TypeAction.MESSAGE, f"On retravaille « {self.g.kcs[kc].titre} » encore un peu.", self.mode))
-        return Retour(verdict, texte)
+        if etapes and verdict.erreur_type and verdict.statut is Statut.INCORRECT and mode is not Mode.DIAGNOSTIC:
+            texte = verdict.message + " " + texte
+        return Retour(verdict, texte, etapes)
 
     # ------------------------------------------------------------------ diagnostic → parcours
     def _terminer_diagnostic(self) -> None:
@@ -252,16 +280,15 @@ class Session:
         self._log("diagnostic_fin", {"marginales": r.marginales, "frontiere": r.frontiere, "parcours": self.file,
                                      "raison": r.raison_arret, "explication": r.explication(self.contenu)})
         racines = [k for k in r.frontiere if k not in self.cibles]
-        a_verifier = [k for k in self.file if k not in self.cibles and k not in racines]
+        hypotheses = [k for k in r.hypotheses if k not in self.cibles]
         if racines:
-            texte = ("Bilan du test : avant le chapitre, on va consolider quelques bases. C'est normal, et c'est "
-                     "ce qui débloquera la suite.\n" + "\n".join(r.explication_eleve(self.contenu)))
-        elif a_verifier:
-            texte = "Bilan du test : tes bases tiennent bien. On vérifie juste rapidement quelques notions, puis on attaque le chapitre."
+            tete = ("Bilan du test : on a trouvé d'où viennent tes difficultés. On les retravaille avant le chapitre, "
+                    "c'est ce qui débloquera la suite.")
+        elif hypotheses:
+            tete = "Bilan du test : rien n'est confirmé, mais quelques notions sont à vérifier ; on le fera en t'entraînant."
         else:
-            texte = "Bilan du test : tes bases sont solides, on attaque directement le chapitre."
-        if racines and a_verifier:
-            texte += "\nOn vérifiera aussi rapidement : " + ", ".join(f"{self.g.kcs[k].titre} ({self.g.kcs[k].niveau})" for k in a_verifier) + "."
+            tete = "Bilan du test : tes bases sont solides, on attaque le chapitre."
+        texte = "\n".join([tete, *r.explication_eleve(self.contenu, tuple(self.cibles))])
         self.a_faire.append(Action(TypeAction.MESSAGE, texte, Mode.REMEDIATION, raison="résultat du diagnostic"))
         self.mode = Mode.REMEDIATION
 

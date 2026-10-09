@@ -31,7 +31,7 @@ Le LLM ne décide **rien** : ni la correction, ni la compétence à travailler, 
 |---|---|---|
 | « Arbre » de compétences | **DAG** avec arêtes `forte`/`faible` et justification | Une KC a plusieurs parents ; prérequis et composition sont des relations différentes. |
 | « Les mauvaises réponses n'apportent rien » (arbre du vrai) | **Bibliothèque d'erreurs typiques exécutables** | Une réponse fausse précise identifie la lacune en 1 question au lieu de 4. Les erreurs sont aussi déterministes que les bonnes réponses : ce n'est pas de l'apprentissage. |
-| Descente séquentielle dans le graphe | **Inférence bayésienne + gain d'information** | La descente est lente, sensible aux erreurs d'inattention, et ambiguë. Mesuré : voir `benchmarks.md`. |
+| Descente séquentielle dans le graphe | **On part du présent avec des exercices larges, puis inférence bayésienne + gain d'information pour descendre** | La descente naïve (une question par KC, arrêt à la première réussite) est sensible aux erreurs d'inattention. La stratégie retenue garde l'intuition « par acquis » : voir §7. |
 | Équivalence SymPy = correction | **Équivalence + forme** | `(x+2)²` est équivalent à `x²+4x+4` mais faux si la consigne est « développer ». |
 | `sympify` / `parse_expr` sur la saisie | **Analyseur maison** | Ces fonctions utilisent `eval` et évaluent automatiquement (perte de la forme). |
 | QCM pour aller vite | QCM **uniquement pour le diagnostic** et seulement avec distracteurs issus d'erreurs typiques | Hasard à 25 % : mesuré moins précis que la saisie libre (exactitude 88 % vs 96 %). |
@@ -92,6 +92,46 @@ mettre en cache par (exercice, réponse normalisée).
   importante ici que l'AUC puisque les décisions reposent sur des seuils.
 
 ## 7. Diagnostic (`diagnostic/`)
+
+**Principe : les mathématiques fonctionnent par acquis.** Un exercice d'un niveau donné contient
+toutes ses parties techniques : résoudre `2(x − 3) = ½x + 4` mobilise distributivité, relatifs,
+fractions, réduction, équation du premier degré. Chaque modèle d'exercice déclare donc, **par
+difficulté**, les compétences qu'il mobilise (`MOBILISE` dans `exercises/modeles.py`, à faire
+relire par un enseignant). La vraisemblance est conjonctive : réussir exige toutes ces compétences,
+donc **une réussite les valide toutes**.
+
+Stratégie « descendante » (par défaut) :
+1. **On teste le présent en ratissant large** : première question = l'exercice du chapitre qui
+   mobilise le plus de compétences, au niveau le plus difficile.
+2. Les autres cibles du chapitre sont testées elles-mêmes avant toute descente.
+3. **On ne descend que sur un échec** : seules les parties d'un exercice raté (et la KC d'une erreur
+   typique reconnue) deviennent testables, avec des exercices de plus en plus ciblés (difficulté
+   2, puis 1, puis notions plus anciennes). Une notion validée par une réussite plus haut n'est
+   jamais re-testée.
+4. Parmi les questions autorisées, choix par gain d'information.
+
+**Démarche hypothèse → vérification (rigueur de la preuve).** Un exercice ne suffit pas à conclure :
+- une réussite dans un exercice complet rend ses notions **présumées acquises** (confirmées ensuite
+  pendant l'entraînement), jamais « acquises » ;
+- un exercice complet raté rend ses notions **suspectes** : on les explore avec des exercices plus
+  ciblés ;
+- un exercice ciblé raté, ou une erreur typique reconnue, crée une **hypothèse**, vérifiée par un
+  second exercice différent, en commençant par la notion la plus ancienne (racine probable) ;
+- une **lacune n'est confirmée qu'avec au moins 2 preuves directes** (`preuves_lacune`) ; les échecs
+  au-dessus d'une lacune confirmée sont expliqués par elle et ne sont pas re-vérifiés ;
+- le bilan distingue lacunes confirmées, hypothèses à vérifier et notions présumées acquises.
+
+**« Regarder la copie ».** Pour les équations, l'élève peut rédiger sa résolution ligne par ligne
+(`Item.corriger_etapes`) : la première ligne qui change l'ensemble des solutions est localisée et
+l'erreur typique qui la produit est reconnue ; c'est une preuve directe sur la notion en cause. Pendant
+l'entraînement, la correction est affichée ligne par ligne (seule la première erreur est signalée, la
+suite « découle de l'erreur »).
+
+Effets mesurés : un élève qui maîtrise tout est diagnostiqué en 3 à 4 questions, toutes au niveau
+du chapitre ; une lacune en multiplication de fractions est retrouvée en 7 à 9 questions en ne
+descendant que dans l'exercice raté. Cette logique a aussi révélé trois prérequis manquants dans le
+graphe ; une validation vérifie désormais que toute compétence mobilisée appartient au chapitre.
+La stratégie « exhaustive » (tout le sous-graphe) reste disponible pour comparaison.
 
 - Sous-graphe = fermeture des ancêtres des KC cibles du chapitre (27 KC pour les équations).
 - A priori « noisy-AND » : KC improbable si un prérequis fort n'est pas maîtrisé ; probabilité

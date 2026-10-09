@@ -61,7 +61,7 @@ function afficher(id) {
   window.scrollTo({ top: 0 });
 }
 
-function oublierJeton() { jeton = null; stock.del("jeton"); $("#menu").hidden = true; }
+function oublierJeton() { jeton = null; stock.del("jeton"); $("#menu").hidden = true; $("#btn-recommencer").hidden = true; }
 
 /* ------------------------------------------------------------------ inscription */
 
@@ -193,12 +193,73 @@ function champSaisie(q) {
   return { noeud: inp, valeur: () => ({ saisie: inp.value, format: "texte" }) };
 }
 
+/* Résolution rédigée « comme sur la copie » : une égalité par ligne, la dernière donne la solution.
+   Le serveur localise la première ligne fausse et reconnaît l'erreur (preuve directe). */
+function editeurCopie(q) {
+  const avecMathLive = !!window.customElements?.get("math-field");
+  const liste = el("ol", { class: "copie-lignes" });
+  const champs = [];
+  const valider = () => liste.closest(".saisie")?.querySelector("button.principal")?.click();
+  const ajouter = (apres = null) => {
+    let champ;
+    if (avecMathLive) {
+      champ = el("math-field", { "aria-label": `Ligne ${champs.length + 1} de ta résolution` });
+      champ.mathVirtualKeyboardPolicy = "auto";
+    } else {
+      champ = el("input", { class: "texte", autocomplete: "off", autocapitalize: "off", spellcheck: "false",
+        "aria-label": `Ligne ${champs.length + 1} de ta résolution`, placeholder: champs.length ? "" : "première étape…" });
+    }
+    champ.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.ctrlKey || e.metaKey) return valider();
+      const nouveau = ajouter(champ);
+      setTimeout(() => nouveau.focus(), 20);
+    }, true);
+    const li = el("li", {}, champ);
+    const idx = apres ? champs.indexOf(apres) + 1 : champs.length;
+    champs.splice(idx, 0, champ);
+    if (apres) apres.closest("li").after(li); else liste.append(li);
+    return champ;
+  };
+  ajouter();
+  const noeud = el("div", { class: "copie" },
+    el("p", { class: "copie-depart" }, el("span", { class: "petit" }, "Énoncé : "), q.depart),
+    liste,
+    el("button", { type: "button", class: "discret", onclick: () => setTimeout(() => ajouter().focus(), 20) }, "＋ Ajouter une ligne"));
+  return {
+    noeud,
+    champs,
+    valeur: () => {
+      const lignes = champs.map((c) => (avecMathLive ? c.value : c.value).trim()).filter(Boolean);
+      return { lignes, saisie: lignes[lignes.length - 1] || "", format: avecMathLive ? "latex" : "texte" };
+    },
+    verrouiller: () => champs.forEach((c) => { c.setAttribute("read-only", ""); c.disabled = true; }),
+  };
+}
+
+function afficherEtapes(zone, etapes) {
+  if (!etapes || !etapes.length) { zone.hidden = true; return; }
+  const apres = etapes.some((e) => e.statut === "suite")
+    ? el("p", { class: "petit" }, "Les lignes suivantes découlent de l'erreur : corrige d'abord celle-ci.") : null;
+  zone.replaceChildren(el("p", { class: "petit" }, "Ta résolution, ligne par ligne :"),
+    el("ol", {}, etapes.map((e) => el("li", { class: e.statut },
+      el("span", { class: "marque-ligne", "aria-hidden": "true" }, { ok: "✓", suite: "·" }[e.statut] || "✗"),
+      el("span", { class: "texte-ligne" }, e.texte),
+      e.erreur ? el("span", { class: "erreur-ligne" }, ` — ${e.erreur}`) : null))), apres);
+  zone.hidden = false;
+}
+
 function rendreQuestion(a) {
   const q = a.question;
   const retour = el("div", { class: "retour", hidden: true, role: "status" });
   const zoneIndice = el("p", { class: "indice", hidden: true });
-  const etiquette = el("div", { class: "etiquette" }, q.competence, el("span", { class: "niveau" }, q.niveau));
+  const etiquette = el("div", { class: "etiquette" }, q.competence, el("span", { class: "niveau" }, q.niveau),
+    el("span", { class: "difficulte", title: `Difficulté ${q.difficulte} sur 3`, "aria-label": `Difficulté ${q.difficulte} sur 3` },
+      [1, 2, 3].map((n) => el("i", { class: n <= q.difficulte ? "plein" : "" }))));
   const enonce = el("p", { class: "enonce" }, q.enonce);
+  const zoneEtapes = el("div", { class: "etapes-retour", hidden: true });
   let zone;
 
   const envoyer = async (corps, verrouiller) => {
@@ -207,6 +268,7 @@ function rendreQuestion(a) {
     try {
       const r = await api(`/api/seances/${etat.seance}/reponse`, { methode: "POST", corps });
       afficherRetour(retour, r, a.mode);
+      afficherEtapes(zoneEtapes, a.mode === "diagnostic" ? [] : r.etapes);
       if (r.statut !== "illisible") {
         verrouiller();
         zone.querySelector(".actions")?.replaceWith(boutonContinuer());
@@ -223,6 +285,14 @@ function rendreQuestion(a) {
     } }, q.type_reponse === "booleen" ? c[0].toUpperCase() + c.slice(1) : c));
     zone = el("div", { class: "saisie" }, el("div", { class: "choix" }, boutons), retour,
       el("div", { class: "actions" }, boutonIndice(zoneIndice)));
+  } else if (q.etapes_possibles) {
+    const copie = editeurCopie(q);
+    const valider = el("button", { class: "principal", type: "button" }, "Valider");
+    valider.onclick = () => envoyer(copie.valeur(), copie.verrouiller);
+    zone = el("div", { class: "saisie" }, copie.noeud,
+      el("p", { class: "aide-saisie" }, "Rédige comme sur ta copie : une égalité par ligne (Entrée = ligne suivante). "
+        + `La dernière ligne donne la solution (${q.variable} = …). Tu peux aussi n'écrire que la solution.`),
+      zoneIndice, retour, zoneEtapes, el("div", { class: "actions" }, valider, boutonIndice(zoneIndice)));
   } else {
     const champ = champSaisie(q);
     const valider = el("button", { class: "principal", type: "button" }, "Valider");
@@ -281,6 +351,12 @@ function brancherMenu() {
     el("a", { href: url, download: "mes-donnees.json" }).click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  $("#btn-recommencer").onclick = async () => {
+    if (!confirm("Recommencer à zéro ? Toutes tes réponses et ta progression seront effacées (ton compte est conservé).")) return;
+    await api("/api/moi/reinitialiser", { methode: "POST" });
+    Object.assign(etat, { seance: null, chapitre: null, question: 0 });
+    await vueChapitres();
+  };
   $("#btn-effacer").onclick = async () => {
     if (!confirm("Effacer définitivement ton compte et toutes tes réponses ?")) return;
     await api("/api/moi", { methode: "DELETE" });
@@ -299,6 +375,7 @@ async function demarrer() {
   const moi = await api("/api/moi");
   $("#menu-prenom").textContent = moi.prenom;
   $("#menu").hidden = false;
+  $("#btn-recommencer").hidden = false;
   await vueChapitres();
 }
 
