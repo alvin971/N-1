@@ -52,8 +52,9 @@ class NouvelleSeance(BaseModel):
 
 
 class Reponse(BaseModel):
-    saisie: str = Field(max_length=400)
+    saisie: str = Field(default="", max_length=400)
     format: str = Field(default="texte", pattern="^(texte|latex)$")
+    lignes: list[str] | None = Field(default=None, max_length=20, description="résolution rédigée ligne par ligne")
 
 
 class Consentement(BaseModel):

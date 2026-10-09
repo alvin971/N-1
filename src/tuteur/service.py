@@ -182,22 +182,27 @@ class Service:
     def repondre(self, eleve: str, sid: str, corps: dict) -> dict:
         saisie = str(corps.get("saisie") or "")
         fmt = corps.get("format", "texte")
+        lignes = corps.get("lignes") or None
         if len(saisie) > 400 or fmt not in ("texte", "latex"):
             raise ErreurService(422, "réponse invalide")
+        if lignes is not None and (not isinstance(lignes, list) or len(lignes) > 20
+                                   or any(not isinstance(l, str) or len(l) > 200 for l in lignes)):
+            raise ErreurService(422, "résolution invalide (20 lignes au plus)")
         with self.verrou:
             s = self._seance(sid, eleve)
             if s.item_courant is None:
                 raise ErreurService(409, "aucune question en attente")
             if fmt == "latex":
                 try:
-                    saisie = latex_vers_texte(saisie)
+                    saisie = latex_vers_texte(saisie) if saisie else saisie
+                    lignes = [latex_vers_texte(l) for l in lignes if l.strip()] if lignes else None
                 except ErreurLecture as e:
                     return {"statut": Statut.ILLISIBLE.value, "juste": False, "texte": f"Je n'arrive pas à lire ta réponse : {e}.",
-                            "lu": None, "erreur": None}
-            r = s.repondre(saisie)
+                            "lu": None, "erreur": None, "etapes": []}
+            r = s.repondre(saisie, lignes)
             err = self.contenu.erreurs.get(r.verdict.erreur_type) if r.verdict.erreur_type else None
             return {"statut": r.verdict.statut.value, "juste": r.verdict.juste, "texte": r.texte, "lu": r.verdict.lu,
-                    "erreur": {"id": err.id, "titre": err.titre} if err else None}
+                    "erreur": {"id": err.id, "titre": err.titre} if err else None, "etapes": list(r.etapes)}
 
     def aide(self, eleve: str, sid: str) -> dict:
         with self.verrou:
@@ -294,6 +299,8 @@ def _action_json(contenu: Contenu, s: Session, a: Action) -> dict:
             "competence": kc.titre,
             "niveau": kc.niveau,
             "difficulte": a.item.difficulte,
+            "etapes_possibles": a.item.etapes_possibles,
+            "depart": a.item.equation_depart if a.item.etapes_possibles else None,
         }
     if a.type is TypeAction.FIN:
         d["escalades"] = [g.kcs[k].titre for k in s.escalades]

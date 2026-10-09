@@ -113,3 +113,45 @@ def test_strategie_exhaustive_toujours_disponible(contenu):
     cibles = ["eq.ax_plus_b_egal_c"]
     d = Diagnostic(contenu, cibles, "3e", params=ParamsDiagnostic(strategie="exhaustive"))
     assert d.eligibles() == set(d.kcs)
+
+
+# ---------------------------------------------------------------------- démarche hypothèse → vérification
+
+
+class _UneSeuleErreur(EleveSimule):
+    """Sait tout, mais se trompe UNE fois (inattention) sur la première question ciblée."""
+
+    def repondre(self, item, contenu):
+        if not getattr(self, "_deja", False) and item.kcs[0] not in self._cibles:
+            self._deja = True
+            return "999999"
+        return super().repondre(item, contenu)
+
+
+def test_une_erreur_isolee_n_est_pas_une_lacune(contenu):
+    cibles = list(contenu.graphe.chapitres["equations_3e"].cibles)
+    kcs = set(contenu.graphe.sous_graphe(cibles))
+    # on force un échec sur l'exercice complet pour obliger le test à descendre
+    eleve = _UneSeuleErreur(kcs - {"eq.avec_parentheses"}, p_slip=0.0, rng=random.Random(0))
+    eleve._cibles = set(cibles)
+    d, items = _trace(contenu, eleve, cibles)
+    r = d.resultat()
+    for kc in r.frontiere:
+        echecs, reussites = r.preuves[kc]
+        assert echecs >= 2 and echecs > reussites, (kc, r.preuves[kc])
+    # la notion ratée une seule fois a été revérifiée par un autre exercice, et n'est pas une lacune
+    premiere_ciblee = next(i for i in items if i.kcs[0] not in cibles)
+    assert premiere_ciblee.kcs[0] not in r.frontiere
+    assert sum(1 for i in items if i.kcs[0] == premiere_ciblee.kcs[0]) >= 2
+
+
+def test_une_lacune_exige_deux_preuves_directes(contenu):
+    g = contenu.graphe
+    cibles = list(g.chapitres["equations_3e"].cibles)
+    kcs = set(g.sous_graphe(cibles))
+    non = {"rel.soustraction"} | g.descendants("rel.soustraction", kcs)
+    d, _ = _trace(contenu, EleveSimule(kcs - non, p_slip=0.0, rng=random.Random(3)), cibles, graine=3)
+    r = d.resultat()
+    assert "rel.soustraction" in r.frontiere and r.preuves["rel.soustraction"][0] >= 2
+    # les échecs au-dessus sont expliqués par la lacune : ce ne sont pas des hypothèses séparées
+    assert not any("rel.soustraction" in g.ancetres(h, inclure=False) for h in r.hypotheses)

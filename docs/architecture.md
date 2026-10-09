@@ -110,6 +110,23 @@ Stratégie « descendante » (par défaut) :
    jamais re-testée.
 4. Parmi les questions autorisées, choix par gain d'information.
 
+**Démarche hypothèse → vérification (rigueur de la preuve).** Un exercice ne suffit pas à conclure :
+- une réussite dans un exercice complet rend ses notions **présumées acquises** (confirmées ensuite
+  pendant l'entraînement), jamais « acquises » ;
+- un exercice complet raté rend ses notions **suspectes** : on les explore avec des exercices plus
+  ciblés ;
+- un exercice ciblé raté, ou une erreur typique reconnue, crée une **hypothèse**, vérifiée par un
+  second exercice différent, en commençant par la notion la plus ancienne (racine probable) ;
+- une **lacune n'est confirmée qu'avec au moins 2 preuves directes** (`preuves_lacune`) ; les échecs
+  au-dessus d'une lacune confirmée sont expliqués par elle et ne sont pas re-vérifiés ;
+- le bilan distingue lacunes confirmées, hypothèses à vérifier et notions présumées acquises.
+
+**« Regarder la copie ».** Pour les équations, l'élève peut rédiger sa résolution ligne par ligne
+(`Item.corriger_etapes`) : la première ligne qui change l'ensemble des solutions est localisée et
+l'erreur typique qui la produit est reconnue ; c'est une preuve directe sur la notion en cause. Pendant
+l'entraînement, la correction est affichée ligne par ligne (seule la première erreur est signalée, la
+suite « découle de l'erreur »).
+
 Effets mesurés : un élève qui maîtrise tout est diagnostiqué en 3 à 4 questions, toutes au niveau
 du chapitre ; une lacune en multiplication de fractions est retrouvée en 7 à 9 questions en ne
 descendant que dans l'exercice raté. Cette logique a aussi révélé trois prérequis manquants dans le

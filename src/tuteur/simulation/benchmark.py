@@ -23,10 +23,12 @@ class Mesures:
     rappel_frontiere: float  # part des vraies lacunes racines retrouvées
     precision_frontiere: float
     questions: float
+    rappel_avec_hypotheses: float = 0.0  # lacunes confirmées OU signalées comme hypothèses à vérifier
 
     def ligne(self, nom: str) -> str:
-        return (f"{nom:<32} exactitude KC {self.exactitude_kc:6.1%} | rappel frontière {self.rappel_frontiere:6.1%} "
-                f"| précision frontière {self.precision_frontiere:6.1%} | questions {self.questions:5.1f}")
+        return (f"{nom:<32} exactitude {self.exactitude_kc:6.1%} | lacunes confirmées {self.rappel_frontiere:6.1%} "
+                f"(+ hypothèses {self.rappel_avec_hypotheses:6.1%}) | précision {self.precision_frontiere:6.1%} "
+                f"| questions {self.questions:5.1f}")
 
 
 def _pr(vraie: set[str], trouvee: set[str]) -> tuple[float, float]:
@@ -36,12 +38,12 @@ def _pr(vraie: set[str], trouvee: set[str]) -> tuple[float, float]:
 
 
 def diagnostiquer(contenu: Contenu, eleve: EleveSimule, cibles: list[str], niveau: str, graine: int,
-                  params: ParamsDiagnostic = ParamsDiagnostic()) -> tuple[dict[str, bool], set[str], int]:
+                  params: ParamsDiagnostic = ParamsDiagnostic()) -> tuple[dict[str, bool], set[str], int, set[str]]:
     d = Diagnostic(contenu, cibles, niveau, params=params, graine=graine)
     while (item := d.prochaine_question()) is not None:
         d.enregistrer(item, item.corriger(eleve.repondre(item, contenu)))
     r = d.resultat()
-    return {k: v >= 0.5 for k, v in r.marginales.items()}, set(r.frontiere), len(r.observations)
+    return {k: v >= 0.5 for k, v in r.marginales.items()}, set(r.frontiere), len(r.observations), set(r.hypotheses)
 
 
 def descente_sequentielle(contenu: Contenu, eleve: EleveSimule, cibles: list[str], graine: int) -> tuple[dict[str, bool], set[str], int]:
@@ -63,7 +65,7 @@ def descente_sequentielle(contenu: Contenu, eleve: EleveSimule, cibles: list[str
             pile.extend(p for p in g.prereqs(k, True) if p not in resultat)
     classes = {k: resultat.get(k, True) for k in kcs}
     frontiere = {k for k, ok in resultat.items() if not ok and all(resultat.get(p, True) for p in g.prereqs(k, True))}
-    return classes, frontiere, n
+    return classes, frontiere, n, set()
 
 
 def evaluer(contenu: Contenu, chapitre: str = "equations_3e", niveau: str = "3e", n_eleves: int = 100,
@@ -80,7 +82,7 @@ def evaluer(contenu: Contenu, chapitre: str = "equations_3e", niveau: str = "3e"
         "exhaustive (tout le graphe)": lambda e, i: diagnostiquer(contenu, e, cibles, niveau, i, replace(params, strategie="exhaustive")),
         "descente séquentielle naïve": lambda e, i: descente_sequentielle(contenu, e, cibles, i),
     }
-    res: dict[str, list[tuple[float, float, float, int]]] = {nom: [] for nom in strategies}
+    res: dict[str, list[tuple[float, float, float, int, float]]] = {nom: [] for nom in strategies}
     for i in range(n_eleves):
         if profil is None:
             eleve = generer_eleve(contenu, cibles, niveau, rng)
@@ -90,11 +92,12 @@ def evaluer(contenu: Contenu, chapitre: str = "equations_3e", niveau: str = "3e"
         vraie = frontiere_vraie(contenu, eleve, kcs)
         for nom, f in strategies.items():
             e = EleveSimule(set(eleve.maitrisees), eleve.p_slip, eleve.p_erreur_typique, rng=random.Random(i))
-            classes, frontiere, n = f(e, i)
+            classes, frontiere, n, hypotheses = f(e, i)
             exact = sum(classes[k] == eleve.sait(k) for k in kcs) / len(kcs)
             rappel, precision = _pr(vraie, frontiere)
-            res[nom].append((exact, rappel, precision, n))
+            rappel_h, _ = _pr(vraie, frontiere | hypotheses)
+            res[nom].append((exact, rappel, precision, n, rappel_h))
     return {
-        nom: Mesures(*(statistics.mean(v[j] for v in vals) for j in range(4)))  # type: ignore[arg-type]
+        nom: Mesures(*(statistics.mean(v[j] for v in vals) for j in range(5)))  # type: ignore[arg-type]
         for nom, vals in res.items()
     }

@@ -44,23 +44,30 @@ Reproduire : `tuteur benchmark --eleves 60` (profils fort / moyen / fragile, cha
 31 KC). Profils : fort = aucune lacune racine, 15 % de notions de 3e non acquises ; moyen = 0–1
 lacune, 45 % ; fragile = 1–3 lacunes, 75 % ; plus 3 % de notions oubliées isolément partout.
 
-| Profil | Stratégie | Exactitude KC | Lacunes racines retrouvées | Précision | Questions |
-|---|---|---|---|---|---|
-| fort | **descendante** | **94,8 %** | 82,4 % | **85,3 %** | **11,1** |
-| fort | exhaustive | 93,9 % | 83,5 % | 72,4 % | 13,7 |
-| fort | descente naïve | 93,2 % | 67,8 % | 65,8 % | 7,1 |
-| moyen | **descendante** | 95,1 % | 78,3 % | **91,8 %** | **13,5** |
-| moyen | exhaustive | 95,2 % | 86,1 % | 89,1 % | 15,0 |
-| moyen | descente naïve | 88,9 % | 55,2 % | 72,5 % | 10,7 |
-| fragile | **descendante** | 96,2 % | 80,7 % | **94,9 %** | **15,8** |
-| fragile | exhaustive | 96,3 % | 84,1 % | 93,0 % | 16,2 |
-| fragile | descente naïve | 83,9 % | 59,0 % | 81,0 % | 14,7 |
+Avec la règle « une lacune exige 2 preuves directes » (démarche hypothèse → vérification) :
 
-Lecture : la stratégie descendante pose moins de questions et se trompe moins quand elle désigne une
-lacune (précision), au prix d'un rappel un peu plus faible chez les élèves moyens (elle ne va pas
-chercher une notion ancienne qu'aucun exercice raté ne met en cause). Un élève qui maîtrise tout est
-diagnostiqué en 3 à 4 questions, sans jamais revenir au primaire. Les « forts » restent à ~11
-questions en moyenne car le simulateur leur attribue environ une notion oubliée isolément.
+| Profil | Stratégie | Exactitude KC | Lacunes confirmées | + hypothèses signalées | Précision | Questions |
+|---|---|---|---|---|---|---|
+| fort | **descendante** | **94,9 %** | 76,5 % | 79,2 % | **85,3 %** | **11,5** |
+| fort | exhaustive | 93,5 % | 82,2 % | 82,2 % | 71,8 % | 13,9 |
+| fort | descente naïve | 93,0 % | 68,0 % | 68,0 % | 68,0 % | 7,2 |
+| moyen | **descendante** | 94,5 % | 60,0 % | 67,3 % | 87,2 % | 15,3 |
+| moyen | exhaustive | 94,8 % | 85,3 % | 85,3 % | 87,9 % | 15,3 |
+| moyen | descente naïve | 88,3 % | 53,9 % | 53,9 % | 72,0 % | 11,0 |
+| fragile | **descendante** | 95,2 % | 55,1 % | 65,2 % | **96,0 %** | 17,1 |
+| fragile | exhaustive | 96,2 % | 83,1 % | 83,1 % | 92,3 % | 16,3 |
+| fragile | descente naïve | 84,2 % | 59,5 % | 59,5 % | 80,7 % | 14,9 |
+
+Lecture honnête :
+- la rigueur a un coût : à budget égal (18 questions), un élève qui a 2 ou 3 lacunes ne peut pas les
+  voir toutes confirmées dès le test ; elles restent « à vérifier » ou sont découvertes pendant
+  l'entraînement (descente sur erreur typique, compétence qui résiste) ;
+- la stratégie exhaustive « trouve » plus de lacunes car elle conclut sur des probabilités ; dans ce
+  simulateur, ses probabilités sont justes car les élèves simulés suivent le même modèle que le
+  diagnostic. Sur de vrais élèves, une conclusion fondée sur deux preuves directes est plus robuste
+  qu'une probabilité issue d'un modèle imparfait — à vérifier lors du pilote ;
+- les élèves simulés ne rédigent pas leurs résolutions : l'apport de la « copie » ligne par ligne
+  (une preuve directe et localisée à chaque équation) n'est pas mesuré ici.
 
 ## Cohérence du contenu (CI)
 

@@ -46,7 +46,8 @@ def test_parcours_complet_et_reponse_latex(client):
     a = client.get(f"/api/seances/{sid}/action", headers=h).json()
     assert a["type"] == "question" and "question" in a
     # la bonne réponse n'est jamais envoyée au navigateur : liste fermée des champs exposés
-    assert set(a["question"]) == {"enonce", "choix", "type_reponse", "variable", "competence", "niveau", "difficulte"}
+    assert set(a["question"]) == {"enonce", "choix", "type_reponse", "variable", "competence", "niveau", "difficulte",
+                                  "etapes_possibles", "depart"}
     r = client.post(f"/api/seances/{sid}/reponse", json={"saisie": r"\frac{1}{2}", "format": "latex"}, headers=h).json()
     assert r["statut"] in {"correct", "incorrect", "forme_non_conforme"}
     assert client.post(f"/api/seances/{sid}/aide", headers=h).status_code == 200

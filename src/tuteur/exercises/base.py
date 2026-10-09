@@ -13,12 +13,16 @@ Principes :
 from __future__ import annotations
 
 import random
+import re
 from dataclasses import dataclass, field
 from typing import Callable
 
 import sympy
 
-from ..mathengine import SpecReponse, corriger, egalite_ensembles, equivalentes
+from ..mathengine import (
+    ErreurLecture, SpecReponse, Statut, StatutLigne, Verdict, corriger, egalite_ensembles, equivalentes, lire_equation,
+    verifier_resolution,
+)
 
 
 @dataclass(frozen=True)
@@ -50,6 +54,48 @@ class Item:
 
     def corriger(self, saisie: str):
         return corriger(self.spec, saisie)
+
+    # ------------------------------------------------------------------ résolution rédigée (« la copie »)
+    @property
+    def equation_depart(self) -> str | None:
+        """Équation de l'énoncé, si l'exercice demande de résoudre une équation (sinon None)."""
+        if self.spec.type != "solutions" or "équation " not in self.enonce:
+            return None
+        texte = self.enonce.split("équation ", 1)[1].strip()
+        texte = re.sub(r"\s*\((?:solution|réponse)[^)]*\)\s*\.?$", "", texte).strip().rstrip(".")
+        try:
+            lire_equation(texte)
+        except ErreurLecture:
+            return None
+        return texte
+
+    @property
+    def etapes_possibles(self) -> bool:
+        """Rédaction ligne par ligne possible : équation à une seule inconnue sans « ou »
+        (le produit nul se rédige avec des disjonctions que le vérificateur ne lit pas)."""
+        return self.equation_depart is not None and len(self.spec.valeur) == 1  # type: ignore[arg-type]
+
+    def corriger_etapes(self, lignes: list[str]):
+        """Corrige une résolution rédigée. Chaque égalité doit garder les solutions de la précédente ;
+        la PREMIÈRE ligne fausse est localisée et l'erreur typique qui la produit, si elle est
+        reconnue, est une preuve directe sur la notion en cause. La dernière ligne donne la réponse."""
+        lignes = [l.strip() for l in lignes if l and l.strip()]
+        if not lignes:
+            return Verdict(Statut.ILLISIBLE, "Écris au moins la solution."), None
+        final = corriger(self.spec, lignes[-1])
+        egalites = [l for l in lignes if "=" in l and ";" not in l and " ou " not in l]
+        depart = self.equation_depart
+        if depart is None or not egalites:
+            return final, None
+        rapport = verifier_resolution([depart] + egalites, self.spec.variable)
+        if rapport.premiere_erreur is None:
+            return final, rapport
+        ligne = rapport.lignes[rapport.premiere_erreur]
+        if ligne.statut is StatutLigne.ILLISIBLE:
+            return Verdict(Statut.ILLISIBLE, f"Je n'arrive pas à lire la ligne « {ligne.texte} »."), rapport
+        erreur = ligne.erreur_type or final.erreur_type
+        message = f"La ligne « {ligne.texte} » n'a plus les mêmes solutions que la précédente."
+        return Verdict(Statut.INCORRECT, message, erreur, final.lu), rapport
 
 
 @dataclass(frozen=True)
