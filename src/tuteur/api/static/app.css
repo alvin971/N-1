@@ -179,3 +179,12 @@ math-field { width: 100%; font-size: 1.4rem; padding: 8px 10px; border-radius: 1
 .difficulte { display: inline-flex; gap: 3px; margin-left: 2px; }
 .difficulte i { width: 7px; height: 7px; border-radius: 50%; background: var(--neutre-doux); border: 1px solid var(--bord); }
 .difficulte i.plein { background: var(--accent); border-color: var(--accent); }
+
+/* bouton « Recommencer à zéro » */
+.barre-actions { display: flex; align-items: center; gap: 8px; }
+.recommencer { border-radius: 999px; padding: 6px 12px; font-size: .9rem; background: var(--surface); white-space: nowrap; }
+.recommencer:hover { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 480px) {
+  .recommencer { font-size: .85rem; padding: 6px 10px; }
+  .recommencer .long, .marque-texte { display: none; }
+}

@@ -106,6 +106,10 @@ def creer_app(dossier_donnees: str | Path | None = None, contenu: Contenu | None
     def effacer(eleve: str = Depends(eleve_courant)):
         return svc.effacer(eleve)
 
+    @app.post("/api/moi/reinitialiser")
+    def reinitialiser(eleve: str = Depends(eleve_courant)):
+        return svc.reinitialiser(eleve)
+
     @app.get("/api/chapitres")
     def chapitres(eleve: str = Depends(eleve_courant)):
         return svc.chapitres(eleve)

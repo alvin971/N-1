@@ -139,6 +139,16 @@ class Service:
                 del self.seances[sid]
         return {"efface": True, "evenements_supprimes": n}
 
+    def reinitialiser(self, eleve: str) -> dict:
+        """Repartir de zéro en gardant le compte : réponses, compétences et séance en cours
+        sont effacées ; identité, consentements et jeton sont conservés."""
+        with self.verrou:
+            n = self.journal.effacer_eleve(eleve)
+            self.profils.pop(eleve, None)
+            for sid in [s for s, (e, _) in self.seances.items() if e == eleve]:
+                del self.seances[sid]
+        return {"reinitialise": True, "evenements_supprimes": n}
+
     # ------------------------------------------------------------------ contenu
     def chapitres(self, eleve: str) -> list[dict]:
         with self.verrou:
@@ -230,6 +240,7 @@ _ROUTES: list[tuple[str, str, bool, _R, int]] = [
     ("POST", r"/api/moi/consentements", True, lambda s, e, c: s.consentir(e, c), 200),
     ("GET", r"/api/moi/export", True, lambda s, e, c: s.exporter(e), 200),
     ("DELETE", r"/api/moi", True, lambda s, e, c: s.effacer(e), 200),
+    ("POST", r"/api/moi/reinitialiser", True, lambda s, e, c: s.reinitialiser(e), 200),
     ("GET", r"/api/chapitres", True, lambda s, e, c: s.chapitres(e), 200),
     ("GET", r"/api/chapitres/([\w.-]+)/progression", True, lambda s, e, ch, c: s.progression(e, ch), 200),
     ("POST", r"/api/seances", True, lambda s, e, c: s.nouvelle_seance(e, c), 201),

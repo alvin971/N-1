@@ -61,7 +61,7 @@ function afficher(id) {
   window.scrollTo({ top: 0 });
 }
 
-function oublierJeton() { jeton = null; stock.del("jeton"); $("#menu").hidden = true; }
+function oublierJeton() { jeton = null; stock.del("jeton"); $("#menu").hidden = true; $("#btn-recommencer").hidden = true; }
 
 /* ------------------------------------------------------------------ inscription */
 
@@ -283,6 +283,12 @@ function brancherMenu() {
     el("a", { href: url, download: "mes-donnees.json" }).click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  $("#btn-recommencer").onclick = async () => {
+    if (!confirm("Recommencer à zéro ? Toutes tes réponses et ta progression seront effacées (ton compte est conservé).")) return;
+    await api("/api/moi/reinitialiser", { methode: "POST" });
+    Object.assign(etat, { seance: null, chapitre: null, question: 0 });
+    await vueChapitres();
+  };
   $("#btn-effacer").onclick = async () => {
     if (!confirm("Effacer définitivement ton compte et toutes tes réponses ?")) return;
     await api("/api/moi", { methode: "DELETE" });
@@ -301,6 +307,7 @@ async function demarrer() {
   const moi = await api("/api/moi");
   $("#menu-prenom").textContent = moi.prenom;
   $("#menu").hidden = false;
+  $("#btn-recommencer").hidden = false;
   await vueChapitres();
 }
 
